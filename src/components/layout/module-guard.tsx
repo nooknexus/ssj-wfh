@@ -3,7 +3,8 @@
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Hammer, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 interface ModuleGuardProps {
@@ -38,12 +39,16 @@ export function ModuleGuard({ moduleKey, children }: ModuleGuardProps) {
                 ขออภัยในความไม่สะดวก
               </p>
             </div>
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
-              <Link href="/" className="flex items-center justify-center w-full">
-                <Home className="w-4 h-4 mr-2" />
-                <span>กลับหน้าหลัก</span>
-              </Link>
-            </Button>
+            <Link 
+              href="/" 
+              className={cn(
+                buttonVariants({ variant: "default" }), 
+                "bg-blue-600 hover:bg-blue-700 flex items-center justify-center w-full"
+              )}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              <span>กลับหน้าหลัก</span>
+            </Link>
           </CardContent>
         </Card>
       </div>

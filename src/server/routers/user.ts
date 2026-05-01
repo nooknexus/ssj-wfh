@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { Role } from "@prisma/client";
 
 export const userRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -83,7 +84,7 @@ export const userRouter = createTRPCRouter({
     .input(
       z.object({
         userId: z.number(),
-        role: z.string(),
+        role: z.nativeEnum(Role),
       }),
     )
     .mutation(async ({ ctx, input }) => {

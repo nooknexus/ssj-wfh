@@ -75,7 +75,7 @@ export function DepartmentDialog({ open, onOpenChange, department, onSuccess }: 
     }
   };
 
-  const isLoading = createMutation.isLoading || updateMutation.isLoading;
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

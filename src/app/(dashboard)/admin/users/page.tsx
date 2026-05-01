@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
   };
 
   const handleRoleChange = (userId: number, role: string) => {
-    updateRole.mutate({ userId, role });
+    updateRole.mutate({ userId, role: role as any });
   };
 
   const pendingCount = users?.filter((user) => user.status === "pending").length ?? 0;

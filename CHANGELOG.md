@@ -2,16 +2,23 @@
 
 บันทึกการเปลี่ยนแปลงของโครงการ PLK WFH & Attendance System
 
-## [0.3.0] - 2026-04-30
+## [0.4.0] - 2026-05-01
 
 ### 🚀 ฟีเจอร์ใหม่
-- **Pending Approvals**: เพิ่มหน้าจอจัดการคำขอที่รออนุมัติ (`/pending`)
-- **Admin Settings Module**: เพิ่มส่วนการตั้งค่าระบบสำหรับผู้ดูแลระบบ (`/admin/settings`)
-- **System Roadmap**: เพิ่มไฟล์เอกสาร `ROADMAP.md` เพื่อใช้เป็น Memory สำหรับติดตามและวางแผนฟีเจอร์ในอนาคต
+- **Dynamic System Settings**: ระบบ Sidebar, Header และหน้า Login เปลี่ยนมาดึงข้อมูล `sys_name`, `org_name` และ `sys_description` จากฐานข้อมูลแบบ Real-time
+- **Public Settings API**: เพิ่ม `getPublicSettings` (publicProcedure) เพื่อให้หน้า Login สามารถดึงข้อมูลชื่อระบบได้โดยไม่ต้องล็อกอิน
 
-### 🛠 การปรับปรุง
-- **Leave Syncing**: พัฒนาและปรับปรุงการซิงค์ข้อมูลประวัติการลา (`leave-sync.ts`)
-- **User Roles**: อัปเดตโครงสร้างและระบบจัดการสิทธิ์ผู้ใช้ (Migration `20260424_update_user_roles`)
+### 🛡️ ความปลอดภัยและการปรับปรุง UI
+- **Unified Authentication**: ลบระบบ Mock Login (Credentials Provider) ออกอย่างสมบูรณ์ บังคับใช้ MOPH SSO (ProviderID) เพียงช่องทางเดียว
+- **Functional Admin Settings**: เปิดใช้งานระบบ "เปิดรับการลงทะเบียนใหม่" และ "Session Timeout" ให้ทำงานร่วมกับระบบ Auth จริง
+- **Header Refactoring**:
+    - ซ่อนไอคอนแจ้งเตือนสำหรับผู้ใช้ระดับ `staff`
+    - ปรับปรุงปุ่ม Logout ให้เป็นไอคอน และย้ายออกจาก Dropdown เพื่อความสะดวก
+    - แก้ไขข้อผิดพลาด `MenuGroupRootContext` และโครงสร้างปุ่มซ้อนกัน (Nested Button)
+- **Admin Settings Cleanup**: นำส่วน "จัดการความปลอดภัย" ที่ยังไม่พร้อมใช้งานออกเพื่อลดความสับสน
+
+### 🛠 การปรับปรุงทางเทคนิค
+- **Git Hygiene**: เพิ่มการละเว้นไฟล์สคริปต์ Python (`*.py`) ใน `.gitignore`
 
 
 ## [0.2.0] - 2026-04-21

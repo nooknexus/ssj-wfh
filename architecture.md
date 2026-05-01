@@ -21,8 +21,9 @@ graph TD
 
 ### 2. API Layer (tRPC)
 - ใช้ **tRPC** เพื่อสร้าง API ที่มีความปลอดภัยด้าน Type (Type-safety) แบบ End-to-end
-- **Routers**: แบ่งแยกตามโมดูล (Attendance, Leave/WFH, User, Meeting)
-- **Middlewares**: ตรวจสอบสิทธิ์การเข้าถึง (Authentication & Authorization) ก่อนเข้าถึงข้อมูล
+- **Routers**: แบ่งแยกตามโมดูล (Attendance, Leave/WFH, User, Meeting, SystemSetting)
+- **Middlewares**: ตรวจสอบสิทธิ์การเข้าถึง (Authentication & Authorization)
+- **Procedures**: มีทั้ง `protectedProcedure` (ต้องล็อกอิน) และ `publicProcedure` (สำหรับข้อมูลพื้นฐานหน้า Login เช่น ชื่อระบบ)
 
 ### 3. Database Layer (Prisma & MySQL)
 - **ORM**: Prisma ช่วยในการจัดการ Schema และการ Query ข้อมูลในรูปแบบ Object

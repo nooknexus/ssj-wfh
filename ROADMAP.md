@@ -67,4 +67,6 @@
 - **Tech Stack:** Next.js 16 (App Router), tRPC, Tailwind CSS v4, Prisma, MySQL
 - **UI/UX Rule:** Glassmorphism, ใช้ Lucide Icons, รองรับ Mobile-First เต็มรูปแบบ, สีสัน Modern/Premium
 - **Database Rules:** ใช้ Prisma ORM และมีการทำ Invalidate Query ผ่าน tRPC แทนการโหลดหน้าใหม่เพื่อ UX ที่ดี
-- **Admin Settings:** ได้เริ่มเพิ่มโครงสร้างสำหรับ `admin/settings` และ `pending` screens แล้ว เพื่อเตรียมรองรับการทำงานของแอดมินในโมดูลต่างๆ
+- **Admin Settings:** พัฒนาโครงสร้างฐานข้อมูลสำหรับ `admin/settings` และเชื่อมต่อระบบควบคุมการลงทะเบียน และ Session Timeout เรียบร้อยแล้ว (ฟีเจอร์ความปลอดภัยขั้นสูงยังอยู่ในแผนพัฒนา)
+- **Authentication Focus:** ระบบเปลี่ยนมาใช้ MOPH SSO เป็นหลักอย่างเต็มตัว และถอดระบบ Mock Login ออกเพื่อความปลอดภัยสูงสุดตามมาตรฐานของหน่วยงาน
+- **Public Data Pattern:** เริ่มใช้ `publicProcedure` สำหรับข้อมูลที่จำเป็นต้องแสดงผลก่อนการล็อกอิน (เช่น ชื่อระบบ/หน่วยงาน) เพื่อให้หน้า Login มีความยืดหยุ่นสูงขึ้น

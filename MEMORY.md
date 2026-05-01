@@ -38,6 +38,14 @@
 3. **Weekly Plan (แผนงานรายสัปดาห์)**
    - ใช้ `weekStartsOn: 0` (วันอาทิตย์) เป็นตัวกำหนดต้นสัปดาห์เสมอ
    - เก็บข้อมูลเป็น JSON object รายวันใน `plan_data`
+4. **Dynamic System Branding**
+   - **แนวคิด:** ข้อมูลพื้นฐานเช่น ชื่อระบบ (`sys_name`) และชื่อหน่วยงาน (`org_name`) จะไม่เป็นค่าคงที่ (Hardcoded) แต่จะดึงจากตาราง `system_settings`
+   - **Implementation:** ใช้ `publicProcedure` ใน `systemSettingRouter` เพื่อให้หน้า Login เข้าถึงข้อมูลเหล่านี้ได้โดยไม่ต้องพิสูจน์ตัวตน
+5. **Enforced MOPH SSO**
+   - ระบบปิดการใช้งาน `CredentialsProvider` (Mock Login) อย่างถาวร เพื่อความปลอดภัยและบังคับใช้มาตรฐาน SSO ของกระทรวงฯ
+   - การลงทะเบียนใหม่ถูกควบคุมผ่าน `allow_registration` ใน Admin Settings
+6. **Session Management**
+   - รองรับการตั้งค่า `session_timeout` แบบ Dynamic โดยตรวจสอบ `lastActive` ใน JWT Token เทียบกับค่าที่ตั้งไว้ในฐานข้อมูลทุกครั้งที่มีการ Request ข้อมูล
 
 ## 📂 โครงสร้าง Directory ที่สำคัญ
 - `src/app/` : Routes ของ Next.js App Router

@@ -16,7 +16,7 @@
 
 1. **Clone repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/nooknexus/ssj-wfh.git
    cd WFH
    ```
 

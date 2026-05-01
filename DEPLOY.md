@@ -28,9 +28,10 @@ npm install
 cp .env.example .env
 ```
 **ค่าที่ต้องให้ความสำคัญใน `.env`:**
-- `DATABASE_URL`: Connection String ไปยัง Production MySQL
+- `DATABASE_URL`: Connection String ไปยัง Production MySQL (ตรวจสอบชื่อฐานข้อมูลให้ถูกต้อง)
 - `NEXTAUTH_URL`: URL จริงของระบบ (เช่น `https://wfh.plkhealth.go.th`)
 - `NEXTAUTH_SECRET`: สุ่มรหัสลับใหม่ (ใช้คำสั่ง `openssl rand -base64 32` เพื่อสร้าง)
+- `PORT`: พอร์ตที่ต้องการให้ระบบรัน (เช่น 3004)
 
 ### 3. เตรียมฐานข้อมูล (ยก Database จาก Dev ไป Production)
 เนื่องจากต้องการใช้ข้อมูลทั้งหมดจาก Development ไปยัง Production ให้ทำการ Export และ Import ฐานข้อมูลทั้งหมดดังนี้
@@ -98,7 +99,7 @@ server {
     server_name wfh.yourdomain.com; # เปลี่ยนเป็นโดเมนจริง
 
     location / {
-        proxy_pass http://localhost:3000; # เปลี่ยนพอร์ตหากคุณกำหนดพอร์ตอื่นตอน start
+        proxy_pass http://localhost:3004; # เปลี่ยนพอร์ตให้ตรงกับค่า PORT ใน .env
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

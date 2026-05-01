@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { getLoginUrl } from "@/lib/sso";
+import { getPublicBaseUrl } from "@/lib/url";
 
 const CALLBACK_COOKIE_NAME = "moph_callback_url";
 
@@ -28,8 +29,10 @@ export async function GET(request: Request) {
     return Response.redirect(getLoginUrl(), 302);
   } catch (error) {
     const message = error instanceof Error ? error.message : "sso_init_failed";
-    const redirectUrl = new URL("/login", request.url);
+    const baseUrl = getPublicBaseUrl(request);
+    const redirectUrl = new URL("/login", baseUrl);
     redirectUrl.searchParams.set("error", message.includes("not configured") ? "sso_not_configured" : "sso_init_failed");
     return Response.redirect(redirectUrl, 302);
   }
 }
+

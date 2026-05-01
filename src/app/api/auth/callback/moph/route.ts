@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getPublicBaseUrl } from "@/lib/url";
 
 const CALLBACK_COOKIE_NAME = "moph_callback_url";
 
@@ -19,7 +20,8 @@ export async function GET(request: Request) {
 
   cookieStore.delete(CALLBACK_COOKIE_NAME);
 
-  const redirectUrl = new URL("/login", request.url);
+  const baseUrl = getPublicBaseUrl(request);
+  const redirectUrl = new URL("/login", baseUrl);
   redirectUrl.searchParams.set("callbackUrl", callbackUrl);
 
   if (remoteError) {
@@ -35,3 +37,4 @@ export async function GET(request: Request) {
   redirectUrl.searchParams.set("code", code);
   return Response.redirect(redirectUrl, 302);
 }
+

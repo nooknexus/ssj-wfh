@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PLK WFH & Attendance System
 
-## Getting Started
+ระบบลงเวลาปฏิบัติงานและขออนุมัติปฏิบัติงานที่บ้าน (Work From Home) สำหรับบุคลากรสาธารณสุข
 
-First, run the development server:
+## 🚀 Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Frontend**: Next.js 16 (App Router)
+- **API Layer**: tRPC (End-to-end typesafe API)
+- **Styling**: Tailwind CSS v4.2 + shadcn/ui
+- **Icons**: Lucide Icons
+- **Database**: MySQL
+- **ORM**: Prisma
+- **Authentication**: NextAuth.js (MOPH SSO Integration)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 การติดตั้ง (Setup)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone repository**
+   ```bash
+   git clone <repository-url>
+   cd WFH
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. **Configure environment variables**
+   สร้างไฟล์ `.env` และกำหนดค่าดังนี้:
+   ```env
+   DATABASE_URL="mysql://root:root@localhost:3306/wfh_system"
+   NEXTAUTH_SECRET="your-secret"
+   NEXTAUTH_URL="http://localhost:3004"
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Database Setup**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   # หรือรัน seed เพื่อข้อมูลเริ่มต้น
+   npm run seed
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+   เข้าใช้งานได้ที่: `http://localhost:3004`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📁 โครงสร้างโฟลเดอร์ (Folder Structure)
 
-## Deploy on Vercel
+- `src/app`: Next.js App Router (Pages & Layouts)
+- `src/components`: UI Components (Shared & Feature-based)
+- `src/server`: Backend logic (tRPC Routers, Services, Prisma)
+- `src/trpc`: tRPC Client configuration
+- `prisma`: Database schema & migrations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🗺️ แผนการพัฒนา (Roadmap & Memory)
+สำหรับรายละเอียดสถานะการพัฒนาของแต่ละฟีเจอร์ และแผนการพัฒนาฟีเจอร์ที่ยังไม่เสร็จ (เช่น ระบบจองรถ, ระบบงานสารบรรณ) สามารถดูได้ที่ [ROADMAP.md](./ROADMAP.md)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📜 กฎการพัฒนา (Development Rules)
+
+- ใช้ **TypeScript** เสมอ (Strict Mode)
+- ใช้ **Named Exports** เท่านั้น
+- **RSC (React Server Components)** เป็นค่าเริ่มต้น ใช้ `'use client'` เมื่อจำเป็นเท่านั้น
+- ทุกฟีเจอร์ใหม่ต้องมีการเขียน **Unit Test** (Vitest)

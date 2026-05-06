@@ -25,7 +25,7 @@ export const weeklyPlanRouter = createTRPCRouter({
           },
         },
         orderBy: {
-          week_start: "desc"
+          updated_at: "desc"
         }
       });
     }),
@@ -44,11 +44,16 @@ export const weeklyPlanRouter = createTRPCRouter({
       normalizedDate.setHours(12, 0, 0, 0);
       
       const weekStart = startOfWeek(normalizedDate, { weekStartsOn: 0 });
+      const dayAfter = addDays(weekStart, 1);
+      const dayBefore = addDays(weekStart, -1);
 
       const existingPlan = await ctx.db.weeklyPlan.findFirst({
         where: {
           user_id: userId,
-          week_start: weekStart,
+          week_start: {
+            gte: dayBefore,
+            lt: dayAfter,
+          },
         },
       });
 

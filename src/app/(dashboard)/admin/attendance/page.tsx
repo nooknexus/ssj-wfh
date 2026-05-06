@@ -304,7 +304,7 @@ export default function AdminAttendancePage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        {record.check_in_distance !== null ? (
+                        {record.check_in_distance != null ? (
                           <button 
                             onClick={() => handleShowLocation(record, "in")}
                             className="text-[10px] text-blue-600 hover:underline text-left font-medium"
@@ -312,7 +312,7 @@ export default function AdminAttendancePage() {
                             เข้า: {Math.round(record.check_in_distance)} ม.
                           </button>
                         ) : <span className="text-[10px] text-slate-400">-</span>}
-                        {record.check_out_distance !== null ? (
+                        {record.check_out_distance != null ? (
                           <button 
                             onClick={() => handleShowLocation(record, "out")}
                             className="text-[10px] text-slate-600 hover:underline text-left font-medium"

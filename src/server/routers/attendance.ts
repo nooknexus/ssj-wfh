@@ -354,10 +354,10 @@ export const attendanceRouter = createTRPCRouter({
             }
 
             const checkInDist = attendance.check_in_lat && attendance.check_in_lng 
-              ? calculateDistance(attendance.check_in_lat, attendance.check_in_lng, officeLat, officeLng) 
+              ? calculateDistance(Number(attendance.check_in_lat), Number(attendance.check_in_lng), officeLat, officeLng) 
               : null;
             const checkOutDist = attendance.check_out_lat && attendance.check_out_lng 
-              ? calculateDistance(attendance.check_out_lat, attendance.check_out_lng, officeLat, officeLng) 
+              ? calculateDistance(Number(attendance.check_out_lat), Number(attendance.check_out_lng), officeLat, officeLng) 
               : null;
 
             results.push({

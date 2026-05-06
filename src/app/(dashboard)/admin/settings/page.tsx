@@ -87,6 +87,37 @@ export default function AdminSettingsPage() {
                 onChange={(e) => handleChange("org_name", e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="office_radius">รัศมีสำนักงาน (เมตร)</Label>
+              <Input 
+                id="office_radius" 
+                type="number"
+                placeholder="เช่น 100"
+                value={formData.office_radius || "100"} 
+                onChange={(e) => handleChange("office_radius", e.target.value)}
+              />
+              <p className="text-[10px] text-slate-500">ระยะห่างสูงสุดจากสำนักงาน (เมตร) ที่จะถือว่า "อยู่ในพื้นที่"</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="office_lat">พิกัดละติจูด (Latitude)</Label>
+                <Input 
+                  id="office_lat" 
+                  placeholder="เช่น 16.8173716"
+                  value={formData.office_lat || "16.8173716"} 
+                  onChange={(e) => handleChange("office_lat", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="office_lng">พิกัดลองจิจูด (Longitude)</Label>
+                <Input 
+                  id="office_lng" 
+                  placeholder="เช่น 100.2584649"
+                  value={formData.office_lng || "100.2584649"} 
+                  onChange={(e) => handleChange("office_lng", e.target.value)}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

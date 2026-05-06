@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -76,159 +76,159 @@ enum AttendanceStatus {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
-  provider_id   String?     @unique @db.VarChar(50)
-  hash_cid      String?     @db.VarChar(128)
-  username      String?     @db.VarChar(20)
-  name_th       String?     @db.VarChar(200)
-  name_eng      String?     @db.VarChar(200)
-  email         String?     @db.VarChar(200)
-  title_th      String?     @db.VarChar(50)
-  position      String?     @db.VarChar(200)
-  hcode         String?     @db.VarChar(10)
-  hname         String?     @db.VarChar(200)
-  role          Role        @default(staff)
-  
+  id          Int     @id @default(autoincrement())
+  provider_id String? @unique @db.VarChar(50)
+  hash_cid    String? @db.VarChar(128)
+  username    String? @db.VarChar(20)
+  name_th     String? @db.VarChar(200)
+  name_eng    String? @db.VarChar(200)
+  email       String? @db.VarChar(200)
+  title_th    String? @db.VarChar(50)
+  position    String? @db.VarChar(200)
+  hcode       String? @db.VarChar(10)
+  hname       String? @db.VarChar(200)
+  role        Role    @default(staff)
+
   department_id Int?
   department    Department? @relation(fields: [department_id], references: [id])
-  
-  status        UserStatus  @default(pending)
-  avatar_url    String?     @db.VarChar(500)
-  phone         String?     @db.VarChar(20)
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+
+  status     UserStatus @default(pending)
+  avatar_url String?    @db.VarChar(500)
+  phone      String?    @db.VarChar(20)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // Relations
-  leave_quotas          LeaveQuota[]
-  leave_requests        LeaveRequest[]
-  step1_approvals       LeaveRequest[] @relation("Step1Approver")
-  step2_approvals       LeaveRequest[] @relation("Step2Approver")
-  meeting_bookings      MeetingBooking[] @relation("BookingUser")
-  approved_bookings     MeetingBooking[] @relation("BookingApprover")
-  assigned_docs         Document[] @relation("AssignedTo")
-  assigned_by_docs      Document[] @relation("AssignedBy")
-  created_docs          Document[] @relation("DocCreatedBy")
-  uploaded_attachments  DocumentAttachment[]
-  attendance_records    AttendanceRecord[]
-  weekly_plans          WeeklyPlan[]
-  wfh_requests          WfhRequest[] @relation("WfhUser")
-  approved_wfh          WfhRequest[] @relation("WfhApprover")
+  leave_quotas         LeaveQuota[]
+  leave_requests       LeaveRequest[]
+  step1_approvals      LeaveRequest[]       @relation("Step1Approver")
+  step2_approvals      LeaveRequest[]       @relation("Step2Approver")
+  meeting_bookings     MeetingBooking[]     @relation("BookingUser")
+  approved_bookings    MeetingBooking[]     @relation("BookingApprover")
+  assigned_docs        Document[]           @relation("AssignedTo")
+  assigned_by_docs     Document[]           @relation("AssignedBy")
+  created_docs         Document[]           @relation("DocCreatedBy")
+  uploaded_attachments DocumentAttachment[]
+  attendance_records   AttendanceRecord[]
+  weekly_plans         WeeklyPlan[]
+  wfh_requests         WfhRequest[]         @relation("WfhUser")
+  approved_wfh         WfhRequest[]         @relation("WfhApprover")
 
   @@map("users")
 }
 
 model Department {
-  id            Int         @id @default(autoincrement())
-  name          String      @db.VarChar(200)
-  code          String?     @db.VarChar(20)
-  is_active     Boolean     @default(true)
-  created_at    DateTime    @default(now())
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(200)
+  code       String?  @db.VarChar(20)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
 
-  users             User[]
-  meeting_bookings  MeetingBooking[]
-  documents         Document[]
+  users            User[]
+  meeting_bookings MeetingBooking[]
+  documents        Document[]
 
   @@map("departments")
 }
 
 model LeaveType {
-  id            Int         @id @default(autoincrement())
-  name          String      @db.VarChar(100)
-  code          String      @db.VarChar(20)
-  max_days      Int?
-  is_active     Boolean     @default(true)
-  sort_order    Int         @default(0)
+  id         Int     @id @default(autoincrement())
+  name       String  @db.VarChar(100)
+  code       String  @db.VarChar(20)
+  max_days   Int?
+  is_active  Boolean @default(true)
+  sort_order Int     @default(0)
 
-  quotas        LeaveQuota[]
-  requests      LeaveRequest[]
+  quotas   LeaveQuota[]
+  requests LeaveRequest[]
 
   @@map("leave_types")
 }
 
 model LeaveQuota {
-  id            Int         @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   user_id       Int
-  user          User        @relation(fields: [user_id], references: [id])
+  user          User      @relation(fields: [user_id], references: [id])
   leave_type_id Int
-  leave_type    LeaveType   @relation(fields: [leave_type_id], references: [id])
+  leave_type    LeaveType @relation(fields: [leave_type_id], references: [id])
   fiscal_year   Int
-  total_days    Decimal     @db.Decimal(5, 1)
-  used_days     Decimal     @default(0) @db.Decimal(5, 1)
-  created_at    DateTime    @default(now())
+  total_days    Decimal   @db.Decimal(5, 1)
+  used_days     Decimal   @default(0) @db.Decimal(5, 1)
+  created_at    DateTime  @default(now())
 
   @@map("leave_quotas")
 }
 
 model LeaveRequest {
-  id            Int         @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   user_id       Int?
-  user          User?       @relation(fields: [user_id], references: [id])
-  external_name String?     @db.VarChar(200)
-  cid           String?     @db.VarChar(13)
+  user          User?     @relation(fields: [user_id], references: [id])
+  external_name String?   @db.VarChar(200)
+  cid           String?   @db.VarChar(13)
   leave_type_id Int
-  leave_type    LeaveType   @relation(fields: [leave_type_id], references: [id])
-  start_date    DateTime    @db.Date
-  end_date      DateTime    @db.Date
-  total_days    Decimal     @db.Decimal(5, 1)
-  reason        String?     @db.Text
+  leave_type    LeaveType @relation(fields: [leave_type_id], references: [id])
+  start_date    DateTime  @db.Date
+  end_date      DateTime  @db.Date
+  total_days    Decimal   @db.Decimal(5, 1)
+  reason        String?   @db.Text
 
   // Step 1
-  step1_status  LeaveStatus @default(pending)
-  step1_by      Int?
-  step1_approver User?      @relation("Step1Approver", fields: [step1_by], references: [id])
-  step1_reason  String?     @db.Text
-  step1_at      DateTime?
+  step1_status   LeaveStatus @default(pending)
+  step1_by       Int?
+  step1_approver User?       @relation("Step1Approver", fields: [step1_by], references: [id])
+  step1_reason   String?     @db.Text
+  step1_at       DateTime?
 
   // Step 2
-  step2_status  LeaveStatus @default(pending)
-  step2_by      Int?
-  step2_approver User?      @relation("Step2Approver", fields: [step2_by], references: [id])
-  step2_reason  String?     @db.Text
-  step2_at      DateTime?
+  step2_status   LeaveStatus @default(pending)
+  step2_by       Int?
+  step2_approver User?       @relation("Step2Approver", fields: [step2_by], references: [id])
+  step2_reason   String?     @db.Text
+  step2_at       DateTime?
 
-  status        LeaveStatus @default(pending)
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  status LeaveStatus @default(pending)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("leave_requests")
 }
 
 model WfhRequest {
-  id            Int         @id @default(autoincrement())
-  user_id       Int
-  user          User        @relation("WfhUser", fields: [user_id], references: [id])
-  start_date    DateTime    @db.Date
-  end_date      DateTime    @db.Date
-  reason        String?     @db.Text
-  
-  status        WfhStatus   @default(pending)
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation("WfhUser", fields: [user_id], references: [id])
+  start_date DateTime @db.Date
+  end_date   DateTime @db.Date
+  reason     String?  @db.Text
+
+  status        WfhStatus @default(pending)
   approved_by   Int?
-  approver      User?       @relation("WfhApprover", fields: [approved_by], references: [id])
+  approver      User?     @relation("WfhApprover", fields: [approved_by], references: [id])
   approved_at   DateTime?
-  reject_reason String?     @db.Text
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  reject_reason String?   @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("wfh_requests")
 }
 
 model MeetingRoom {
-  id            Int         @id @default(autoincrement())
-  name          String      @db.VarChar(200)
-  description   String?     @db.Text
-  capacity      Int?
-  location      String?     @db.VarChar(200)
-  facilities    Json?
-  image_url     String?     @db.VarChar(500)
-  status        RoomStatus  @default(active)
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  id          Int        @id @default(autoincrement())
+  name        String     @db.VarChar(200)
+  description String?    @db.Text
+  capacity    Int?
+  location    String?    @db.VarChar(200)
+  facilities  Json?
+  image_url   String?    @db.VarChar(500)
+  status      RoomStatus @default(active)
 
-  bookings      MeetingBooking[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  bookings MeetingBooking[]
 
   @@map("meeting_rooms")
 }
@@ -241,132 +241,132 @@ model MeetingBooking {
   user          User        @relation("BookingUser", fields: [user_id], references: [id])
   department_id Int?
   department    Department? @relation(fields: [department_id], references: [id])
-  
-  title         String      @db.VarChar(500)
-  description   String?     @db.Text
-  date          DateTime    @db.Date
-  start_time    DateTime    @db.Time
-  end_time      DateTime    @db.Time
-  attendees     Int?
-  equipment_needs String?   @db.Text
-  
+
+  title           String   @db.VarChar(500)
+  description     String?  @db.Text
+  date            DateTime @db.Date
+  start_time      DateTime @db.Time
+  end_time        DateTime @db.Time
+  attendees       Int?
+  equipment_needs String?  @db.Text
+
   status        BookingStatus @default(pending)
   approved_by   Int?
-  approver      User?       @relation("BookingApprover", fields: [approved_by], references: [id])
+  approver      User?         @relation("BookingApprover", fields: [approved_by], references: [id])
   approved_at   DateTime?
-  reject_reason String?     @db.Text
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  reject_reason String?       @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("meeting_bookings")
 }
 
 model Document {
-  id            Int         @id @default(autoincrement())
-  doc_type      DocType
-  doc_number    String?     @db.VarChar(100)
-  from_to       String?     @db.VarChar(500)
-  subject       String      @db.Text
-  doc_date      DateTime?   @db.Date
-  
-  assigned_to   Int?
-  assignee      User?       @relation("AssignedTo", fields: [assigned_to], references: [id])
-  assigned_by   Int?
-  assigner      User?       @relation("AssignedBy", fields: [assigned_by], references: [id])
-  
+  id         Int       @id @default(autoincrement())
+  doc_type   DocType
+  doc_number String?   @db.VarChar(100)
+  from_to    String?   @db.VarChar(500)
+  subject    String    @db.Text
+  doc_date   DateTime? @db.Date
+
+  assigned_to Int?
+  assignee    User? @relation("AssignedTo", fields: [assigned_to], references: [id])
+  assigned_by Int?
+  assigner    User? @relation("AssignedBy", fields: [assigned_by], references: [id])
+
   department_id Int?
   department    Department? @relation(fields: [department_id], references: [id])
-  
-  status        DocStatus   @default(new)
-  remark        String?     @db.Text
-  
-  created_by    Int
-  creator       User        @relation("DocCreatedBy", fields: [created_by], references: [id])
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
 
-  attachments   DocumentAttachment[]
+  status DocStatus @default(new)
+  remark String?   @db.Text
+
+  created_by Int
+  creator    User @relation("DocCreatedBy", fields: [created_by], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  attachments DocumentAttachment[]
 
   @@map("documents")
 }
 
 model DocumentAttachment {
-  id            Int         @id @default(autoincrement())
-  document_id   Int
-  document      Document    @relation(fields: [document_id], references: [id], onDelete: Cascade)
-  file_name     String      @db.VarChar(500)
-  file_path     String      @db.VarChar(1000)
-  file_size     Int?
-  mime_type     String?     @db.VarChar(100)
-  
-  uploaded_by   Int
-  uploader      User        @relation(fields: [uploaded_by], references: [id])
-  
-  created_at    DateTime    @default(now())
+  id          Int      @id @default(autoincrement())
+  document_id Int
+  document    Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  file_name   String   @db.VarChar(500)
+  file_path   String   @db.VarChar(1000)
+  file_size   Int?
+  mime_type   String?  @db.VarChar(100)
+
+  uploaded_by Int
+  uploader    User @relation(fields: [uploaded_by], references: [id])
+
+  created_at DateTime @default(now())
 
   @@map("document_attachments")
 }
 
 model AttendanceRecord {
-  id            Int         @id @default(autoincrement())
-  user_id       Int
-  user          User        @relation(fields: [user_id], references: [id])
-  date          DateTime    @db.Date
-  work_type     WorkType
-  
-  check_in_time DateTime?
-  check_out_time DateTime?
-  check_in_lat  Decimal?    @db.Decimal(10, 8)
-  check_in_lng  Decimal?    @db.Decimal(11, 8)
-  check_out_lat Decimal?    @db.Decimal(10, 8)
-  check_out_lng Decimal?    @db.Decimal(11, 8)
-  
-  status        AttendanceStatus @default(on_time)
-  tasks         String?     @db.Text
-  mission_detail String?    @db.Text
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  user      User     @relation(fields: [user_id], references: [id])
+  date      DateTime @db.Date
+  work_type WorkType
 
-  photos        AttendancePhoto[]
+  check_in_time  DateTime?
+  check_out_time DateTime?
+  check_in_lat   Decimal?  @db.Decimal(10, 8)
+  check_in_lng   Decimal?  @db.Decimal(11, 8)
+  check_out_lat  Decimal?  @db.Decimal(10, 8)
+  check_out_lng  Decimal?  @db.Decimal(11, 8)
+
+  status         AttendanceStatus @default(on_time)
+  tasks          String?          @db.Text
+  mission_detail String?          @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  photos AttendancePhoto[]
 
   @@map("attendance_records")
 }
 
 model AttendancePhoto {
-  id              Int         @id @default(autoincrement())
-  attendance_id   Int
-  attendance      AttendanceRecord @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
-  file_name       String      @db.VarChar(500)
-  file_path       String      @db.VarChar(1000)
-  file_size       Int?
-  
-  created_at      DateTime    @default(now())
+  id            Int              @id @default(autoincrement())
+  attendance_id Int
+  attendance    AttendanceRecord @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
+  file_name     String           @db.VarChar(500)
+  file_path     String           @db.VarChar(1000)
+  file_size     Int?
+
+  created_at DateTime @default(now())
 
   @@map("attendance_photos")
 }
 
 model WeeklyPlan {
-  id            Int         @id @default(autoincrement())
-  user_id       Int
-  user          User        @relation(fields: [user_id], references: [id])
-  week_start    DateTime    @db.Date
-  plan_data     Json
-  
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id])
+  week_start DateTime @db.Date
+  plan_data  Json
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("weekly_plans")
 }
 
 model SystemSetting {
-  id            Int         @id @default(autoincrement())
-  setting_key   String      @unique @db.VarChar(100)
-  setting_value String      @db.Text
-  
-  updated_at    DateTime    @updatedAt
+  id            Int    @id @default(autoincrement())
+  setting_key   String @unique @db.VarChar(100)
+  setting_value String @db.Text
+
+  updated_at DateTime @updatedAt
 
   @@map("system_settings")
 }

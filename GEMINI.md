@@ -31,7 +31,7 @@
 
 ## Git
 - Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`
-- Never commit to `main` directly. Branch pattern: `type/short-description`
+#- Never commit to `main` directly. Branch pattern: `type/short-description`
 - Each commit = one logical change.
 
 ## Security

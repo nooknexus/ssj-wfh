@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const departmentRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.department.findMany({
+    const departments = await ctx.db.department.findMany({
       include: {
         _count: {
           select: {
@@ -15,6 +15,13 @@ export const departmentRouter = createTRPCRouter({
         id: "asc",
       },
     });
+    
+    return departments.map(d => ({
+      ...d,
+      _count: {
+        users: Number(d._count?.users || 0)
+      }
+    }));
   }),
 
   create: protectedProcedure

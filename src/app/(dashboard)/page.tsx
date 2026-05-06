@@ -84,7 +84,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          ยินดีต้อนรับ, คุณ{session?.user?.name || "ผู้ใช้งาน"}
+          ยินดีต้อนรับ, {session?.user?.name || "ผู้ใช้งาน"}
         </h1>
       </div>
 
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                       {format(new Date(record.date), "d MMM yy", { locale: th })}
                     </div>
                     <div className={`text-xs px-2 py-1 rounded-full ${getWorkTypeBg(record.work_type)}`}>
-                      {getWorkTypeLabel(record.work_type)} 
+                      {getWorkTypeLabel(record.work_type)}
                       {record.check_in_time && ` (${format(new Date(record.check_in_time), "HH:mm")})`}
                     </div>
                   </div>

@@ -27,6 +27,27 @@ const LocationMap = dynamic(
 );
 import { cn } from "@/lib/utils";
 
+// Office Location Constants
+const OFFICE_LAT = 16.8173716;
+const OFFICE_LNG = 100.2584649;
+const DEFAULT_OFFICE_RADIUS = 100;
+
+// Haversine formula to calculate distance in meters
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // distance in meters
+}
+
 export function AttendanceCard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workType, setWorkType] = useState<string>("office");
@@ -38,6 +59,20 @@ export function AttendanceCard() {
   const utils = trpc.useUtils();
   const { data: status, isLoading } = trpc.attendance.getTodayStatus.useQuery();
   const { data: wfhRequests, isLoading: isWfhLoading } = trpc.wfh.getUserRequests.useQuery();
+  const { data: settings } = trpc.systemSetting.getAll.useQuery();
+
+  const OFFICE_RADIUS_METERS = useMemo(() => {
+    if (settings?.office_radius) {
+      const val = parseInt(settings.office_radius);
+      return isNaN(val) ? DEFAULT_OFFICE_RADIUS : val;
+    }
+    return DEFAULT_OFFICE_RADIUS;
+  }, [settings]);
+
+  const OFFICE_COORDS = useMemo(() => ({
+    lat: settings?.office_lat ? parseFloat(settings.office_lat) : OFFICE_LAT,
+    lng: settings?.office_lng ? parseFloat(settings.office_lng) : OFFICE_LNG
+  }), [settings]);
   
   // ใช้ useMemo เพื่อป้องกันการสร้าง Date ใหม่ทุกครั้งที่เรนเดอร์ (แก้ปัญหาลูป)
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -103,6 +138,16 @@ export function AttendanceCard() {
     return () => clearInterval(timer);
   }, []);
 
+  const distance = useMemo(() => {
+    if (!location) return null;
+    return calculateDistance(location.lat, location.lng, OFFICE_COORDS.lat, OFFICE_COORDS.lng);
+  }, [location, OFFICE_COORDS]);
+
+  const isInArea = useMemo(() => {
+    if (distance === null) return false;
+    return distance <= OFFICE_RADIUS_METERS;
+  }, [distance, OFFICE_RADIUS_METERS]);
+
   const fetchLocation = () => {
     setIsGettingLocation(true);
     if (!navigator.geolocation) {
@@ -121,10 +166,33 @@ export function AttendanceCard() {
       },
       (error) => {
         console.error(error);
-        toast.error("ไม่สามารถดึงพิกัดได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
+        if (error.code === error.PERMISSION_DENIED) {
+           toast.error("คุณปฏิเสธการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ในตั้งค่าเบราว์เซอร์");
+        } else {
+           toast.error("ไม่สามารถดึงพิกัดได้: " + error.message);
+        }
         setIsGettingLocation(false);
-      }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const requestPermission = async () => {
+    try {
+      // สำหรับเบราว์เซอร์บางรุ่นที่รองรับ Permissions API
+      if (navigator.permissions && navigator.permissions.query) {
+        const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+        if (result.state === 'denied') {
+          toast.info("กรุณาเปลี่ยนการตั้งค่าสิทธิ์ 'ตำแหน่ง' ในเบราว์เซอร์ของคุณ (คลิกที่ไอคอนแม่กุญแจข้าง URL)");
+        } else {
+          fetchLocation();
+        }
+      } else {
+        fetchLocation();
+      }
+    } catch (e) {
+      fetchLocation();
+    }
   };
 
   const handleOpenMap = () => {
@@ -166,6 +234,11 @@ export function AttendanceCard() {
   };
 
   const handleCheckOut = async () => {
+    if (!tasks || tasks.trim() === "") {
+      toast.error("กรุณาระบุสรุปงานที่ทำในวันนี้ก่อนลงเวลาออก");
+      return;
+    }
+
     if (!location) {
       setIsGettingLocation(true);
       navigator.geolocation.getCurrentPosition(
@@ -291,46 +364,101 @@ export function AttendanceCard() {
                   "flex flex-col gap-3 p-4 rounded-2xl border transition-all",
                   location ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"
                 )}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "p-2 rounded-full",
-                        location ? "bg-emerald-200 text-emerald-700" : "bg-amber-200 text-amber-700 animate-pulse"
-                      )}>
-                        <MapPin className="w-5 h-5" />
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-2.5 rounded-xl transition-colors",
+                          location 
+                            ? (isInArea ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600") 
+                            : "bg-amber-100 text-amber-600 animate-pulse"
+                        )}>
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                            {location ? (isInArea ? "อยู่ในพื้นที่สำนักงาน" : "อยู่นอกพื้นที่สำนักงาน") : isGettingLocation ? "กำลังดึงพิกัด..." : "ยังไม่พบพิกัด"}
+                            {location && (
+                              <span className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded-full",
+                                isInArea ? "bg-emerald-500 text-white" : "bg-blue-500 text-white"
+                              )}>
+                                {Math.round(distance || 0)} ม.
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium tracking-tight">
+                            {location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : "กรุณาคลิกเพื่อดึงพิกัดล่าสุด"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-sm text-slate-800">
-                          {location ? "ระบุตำแหน่งสำเร็จ" : isGettingLocation ? "กำลังดึงพิกัด..." : "ยังไม่มีข้อมูลพิกัด"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : "กรุณาอนุญาตการเข้าถึงตำแหน่ง"}
-                        </p>
+                      
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-blue-600 font-bold hover:bg-blue-50 rounded-lg text-[11px]"
+                          onClick={handleOpenMap}
+                        >
+                          อัปเดต
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-[11px]"
+                          onClick={fetchLocation}
+                          disabled={isGettingLocation}
+                        >
+                          {isGettingLocation ? "..." : "รีโหลด"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-amber-600 font-bold hover:bg-amber-50 rounded-lg text-[11px]"
+                          onClick={requestPermission}
+                        >
+                          ขอสิทธิ์ GPS
+                        </Button>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-blue-600 font-bold hover:bg-blue-50"
-                      onClick={handleOpenMap}
-                    >
-                      {location ? "อัปเดต" : "ดึงพิกัด"}
-                    </Button>
+
+                    {location && (
+                      <div className="rounded-2xl overflow-hidden shadow-inner border border-slate-100 z-0 h-[280px]">
+                        <LocationMap 
+                          initialLocation={location} 
+                          readOnly={true} 
+                          distance={distance || 0}
+                          isInArea={isInArea}
+                          radius={OFFICE_RADIUS_METERS}
+                          officeLat={OFFICE_COORDS.lat}
+                          officeLng={OFFICE_COORDS.lng}
+                        />
+                      </div>
+                    )}
                   </div>
-                  {location && (
-                    <div className="mt-1 rounded-xl overflow-hidden shadow-sm border border-emerald-200/60 z-0">
-                      <LocationMap initialLocation={location} readOnly={true} />
-                    </div>
-                  )}
                 </div>
 
                 <Button
                   size="lg"
-                  className="w-full py-8 text-xl font-black rounded-2xl shadow-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all"
+                  className={cn(
+                    "w-full py-9 text-xl font-black rounded-2xl shadow-xl transition-all active:scale-[0.98] border-b-4",
+                    isInArea 
+                      ? "bg-emerald-600 hover:bg-emerald-700 border-emerald-800 text-white shadow-emerald-100" 
+                      : "bg-blue-600 hover:bg-blue-700 border-blue-800 text-white shadow-blue-100"
+                  )}
                   onClick={handleCheckIn}
                   disabled={checkInMutation.isPending || isGettingLocation}
                 >
-                  {isGettingLocation ? "กำลังดึงพิกัด..." : checkInMutation.isPending ? "กำลังบันทึก..." : "ลงเวลาเข้างาน"}
+                  {isGettingLocation ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      กำลังดึงพิกัด...
+                    </div>
+                  ) : checkInMutation.isPending ? (
+                    "กำลังบันทึก..."
+                  ) : (
+                    "ลงเวลาเข้างาน"
+                  )}
                 </Button>
               </div>
             </div>
@@ -363,7 +491,9 @@ export function AttendanceCard() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-lg font-bold text-slate-800">สรุปงานที่ทำในวันนี้</Label>
+                  <Label className="text-lg font-bold text-slate-800">
+                    สรุปงานที่ทำในวันนี้ <span className="text-rose-500">*</span>
+                  </Label>
                   {todayPlan && tasks !== todayPlan && (
                     <button
                       type="button"
@@ -473,6 +603,9 @@ export function AttendanceCard() {
           {isMapOpen && (
             <LocationMap
               initialLocation={location}
+              officeLat={OFFICE_COORDS.lat}
+              officeLng={OFFICE_COORDS.lng}
+              radius={OFFICE_RADIUS_METERS}
               onConfirm={(loc) => {
                 setLocation(loc);
                 setIsMapOpen(false);

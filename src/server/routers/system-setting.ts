@@ -21,6 +21,9 @@ export const systemSettingRouter = createTRPCRouter({
       moph_alert_checkin_enabled: "true",
       moph_alert_checkout_enabled: "true",
       moph_alert_reminder_enabled: "true",
+      office_radius: "100",
+      office_lat: "16.8173716",
+      office_lng: "100.2584649",
     };
 
     return { ...defaults, ...settingsMap };

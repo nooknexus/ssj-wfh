@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { startOfDay, endOfDay, format } from "date-fns";
+import { startOfDay, endOfDay, format, addDays, isWeekend, isSameDay } from "date-fns";
+import { getThaiHolidaysForRange, isHoliday } from "../utils/holidays";
 import { sendMophAlert, getCheckInFlexMessage, getCheckOutFlexMessage } from "@/lib/moph-alert";
 
 export const attendanceRouter = createTRPCRouter({
@@ -56,11 +57,14 @@ export const attendanceRouter = createTRPCRouter({
       }
 
       // ตรวจสอบสถานะ (ถ้าหลัง 8:30 ถือว่าสาย - ตรรกะตัวอย่าง)
+      // ยกเว้น onsite จะไม่ถือว่าสาย
       let status: "on_time" | "late" = "on_time";
-      const checkInHour = today.getHours();
-      const checkInMinute = today.getMinutes();
-      if (checkInHour > 8 || (checkInHour === 8 && checkInMinute > 30)) {
-        status = "late";
+      if (input.workType !== "onsite") {
+        const checkInHour = today.getHours();
+        const checkInMinute = today.getMinutes();
+        if (checkInHour > 8 || (checkInHour === 8 && checkInMinute > 30)) {
+          status = "late";
+        }
       }
 
       // ถ้าเป็น WFH ต้องตรวจสอบว่ามีคำขอที่อนุมัติแล้วหรือไม่
@@ -209,5 +213,244 @@ export const attendanceRouter = createTRPCRouter({
         },
         take: input.limit,
       });
+    }),
+
+  // ดึงข้อมูลประวัติการลงเวลาสำหรับผู้ดูแลระบบ
+  getAdminRecords: protectedProcedure
+    .input(
+      z.object({
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+        departmentId: z.number().optional(),
+        status: z.enum(["on_time", "late", "absent", "leave", "holiday", "holiday_work"]).optional(),
+        workType: z.enum(["wfh", "office", "onsite", "unknown"]).optional(),
+        limit: z.number().min(1).max(5000).default(50),
+        page: z.number().min(1).default(1),
+        fetchAll: z.boolean().optional(),
+        search: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // ตรวจสอบสิทธิ์
+      const role = (ctx.session.user as any).role;
+      if (role !== "hradmin" && role !== "superadmin") {
+        throw new Error("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้");
+      }
+
+      const { startDate, endDate, departmentId, status, workType, limit, page, fetchAll, search } = input;
+
+      if (!startDate || !endDate) {
+        throw new Error("กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุดเพื่อค้นหาข้อมูล");
+      }
+
+      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      if (diffDays > 31) {
+        throw new Error("กรุณาเลือกช่วงเวลาค้นหาไม่เกิน 31 วัน");
+      }
+
+      const holidays = await getThaiHolidaysForRange(startDate, endDate);
+      const validDates: Date[] = [];
+      let currentDate = startOfDay(startDate);
+      const end = startOfDay(endDate);
+
+      while (currentDate <= end) {
+        if (!isWeekend(currentDate)) {
+          validDates.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
+      }
+
+      // ดึงรายชื่อพนักงาน
+      const users = await ctx.db.user.findMany({
+        where: {
+          ...(departmentId ? { department_id: departmentId } : {}),
+          ...(search ? {
+            OR: [
+              { name_th: { contains: search } },
+              { username: { contains: search } },
+            ]
+          } : {}),
+        },
+        include: {
+          department: true,
+        }
+      });
+
+      // ดึงเวลาเริ่มงานจากระบบ
+      const workingTimeSetting = await ctx.db.systemSetting.findUnique({
+        where: { setting_key: "working_time" }
+      });
+      const workingTime = workingTimeSetting?.setting_value || "08:30";
+      const [hour, minute] = workingTime.split(":").map(Number);
+
+      // ดึงข้อมูลพิกัดสำนักงาน
+      const officeLatSetting = await ctx.db.systemSetting.findUnique({ where: { setting_key: "office_lat" } });
+      const officeLngSetting = await ctx.db.systemSetting.findUnique({ where: { setting_key: "office_lng" } });
+      const officeLat = parseFloat(officeLatSetting?.setting_value || "16.8173716");
+      const officeLng = parseFloat(officeLngSetting?.setting_value || "100.2584649");
+
+      // ฟังก์ชันคำนวณระยะห่าง (เมตร)
+      const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // Earth radius in meters
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * (Math.PI / 180)) *
+            Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      // ดึงประวัติการลงเวลา
+      const attendanceRecords = await ctx.db.attendanceRecord.findMany({
+        where: {
+          date: {
+            gte: startOfDay(startDate),
+            lte: endOfDay(endDate),
+          },
+          ...(departmentId ? { user: { department_id: departmentId } } : {}),
+        }
+      });
+
+      // ดึงประวัติการลา (ต้องรวม leave_type)
+      const leaveRequests = await ctx.db.leaveRequest.findMany({
+        where: {
+          start_date: { lte: endOfDay(endDate) },
+          end_date: { gte: startOfDay(startDate) },
+          ...(departmentId ? { user: { department_id: departmentId } } : {}),
+          step2_status: 'approved', // นับเฉพาะการลาที่อนุมัติแล้ว
+        },
+        include: {
+          leave_type: true
+        }
+      });
+
+      const results = [];
+      for (const user of users) {
+        const userAttendances = attendanceRecords.filter(r => r.user_id === user.id);
+        const userLeaves = leaveRequests.filter(l => l.user_id === user.id);
+
+        for (const date of validDates) {
+          const attendance = userAttendances.find(r => isSameDay(r.date, date));
+          
+          const onTimeThreshold = new Date(date);
+          onTimeThreshold.setHours(hour, minute, 0, 0);
+
+          if (attendance) {
+            const checkInTime = attendance.check_in_time ? new Date(attendance.check_in_time) : null;
+            const checkOutTime = attendance.check_out_time ? new Date(attendance.check_out_time) : null;
+            const isHolidayDate = isHoliday(date, holidays);
+            // Onsite จะไม่ถือว่าสาย
+            const isLate = attendance.work_type !== "onsite" && checkInTime && !isHolidayDate && checkInTime > onTimeThreshold;
+            
+            // Determine status
+            let finalStatus = isLate ? "late" : "on_time";
+            if (isHolidayDate) {
+              finalStatus = "holiday_work";
+            }
+
+            const checkInDist = attendance.check_in_lat && attendance.check_in_lng 
+              ? calculateDistance(attendance.check_in_lat, attendance.check_in_lng, officeLat, officeLng) 
+              : null;
+            const checkOutDist = attendance.check_out_lat && attendance.check_out_lng 
+              ? calculateDistance(attendance.check_out_lat, attendance.check_out_lng, officeLat, officeLng) 
+              : null;
+
+            results.push({
+              id: attendance.id.toString(),
+              user,
+              date: attendance.date,
+              work_type: attendance.work_type,
+              check_in_time: attendance.check_in_time,
+              check_out_time: (checkInTime?.getTime() === checkOutTime?.getTime()) ? null : attendance.check_out_time,
+              status: finalStatus,
+              tasks: attendance.tasks || "-",
+              check_in_lat: attendance.check_in_lat,
+              check_in_lng: attendance.check_in_lng,
+              check_out_lat: attendance.check_out_lat,
+              check_out_lng: attendance.check_out_lng,
+              check_in_distance: checkInDist,
+              check_out_distance: checkOutDist,
+              office_lat: officeLat,
+              office_lng: officeLng,
+            });
+          } else {
+            // check leave
+            const leave = userLeaves.find(l => {
+              const d = startOfDay(date);
+              const lStart = startOfDay(l.start_date);
+              const lEnd = startOfDay(l.end_date);
+              return d >= lStart && d <= lEnd;
+            });
+            if (leave) {
+              results.push({
+                id: `leave-${leave.id}-${date.getTime()}`,
+                user,
+                date,
+                work_type: "-",
+                check_in_time: null,
+                check_out_time: null,
+                status: "leave",
+                tasks: `ลา: ${leave.leave_type.name}${leave.reason ? ` - ${leave.reason}` : ''}`,
+              });
+            } else if (isHoliday(date, holidays)) {
+              // holiday
+              results.push({
+                id: `holiday-${user.id}-${date.getTime()}`,
+                user,
+                date,
+                work_type: "-",
+                check_in_time: null,
+                check_out_time: null,
+                status: "holiday",
+                tasks: "วันหยุดนักขัตฤกษ์",
+              });
+            } else {
+              // absent
+              results.push({
+                id: `absent-${user.id}-${date.getTime()}`,
+                user,
+                date,
+                work_type: "-",
+                check_in_time: null,
+                check_out_time: null,
+                status: "absent",
+                tasks: "-",
+              });
+            }
+          }
+        }
+      }
+
+      let filteredResults = results;
+      if (status) {
+        filteredResults = filteredResults.filter(r => r.status === status);
+      }
+      if (workType) {
+        filteredResults = filteredResults.filter(r => r.work_type === workType);
+      }
+
+      // Sort by date desc, then user name
+      // Sort by User Name (Thai) first, then by Date Descending
+      filteredResults.sort((a, b) => {
+        const nameA = a.user.name_th || "";
+        const nameB = b.user.name_th || "";
+        const nameDiff = nameA.localeCompare(nameB, "th");
+        if (nameDiff !== 0) return nameDiff;
+        return b.date.getTime() - a.date.getTime();
+      });
+
+      // Paginate
+      const totalItems = filteredResults.length;
+      const totalPages = Math.ceil(totalItems / limit);
+      const startIndex = (page - 1) * limit;
+
+      const paginatedItems = fetchAll ? filteredResults : filteredResults.slice(startIndex, startIndex + limit);
+
+      return { items: paginatedItems, totalItems, totalPages, page };
     }),
 });

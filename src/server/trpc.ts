@@ -36,6 +36,12 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.session || !ctx.session.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+  
+  const userId = Number((ctx.session.user as any).id);
+  if (isNaN(userId)) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid user session" });
+  }
+
   return next({
     ctx: {
       session: { ...ctx.session, user: ctx.session.user },

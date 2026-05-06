@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/server/db";
 import { authenticateWithMOPH } from "@/lib/sso";
+import { authenticateWithThaiD } from "@/lib/thaid";
 
 function compact<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
@@ -107,6 +108,45 @@ export const authOptions: NextAuthOptions = {
         return toSessionUser(user);
       },
     }),
+    CredentialsProvider({
+      id: "thaid-sso",
+      name: "ThaiD",
+      credentials: {
+        code: { label: "Authorization Code", type: "text" },
+        redirectUri: { label: "Redirect URI", type: "text" },
+      },
+      async authorize(credentials) {
+        const code = credentials?.code?.trim();
+        const redirectUri = credentials?.redirectUri?.trim();
+        if (!code || !redirectUri) return null;
+
+        const profile = await authenticateWithThaiD({ code, redirectUri });
+        if (!profile.pid) {
+          return null;
+        }
+
+        const existingUser = await db.user.findFirst({
+          where: { username: profile.pid },
+        });
+
+        if (!existingUser) {
+          throw new Error("thaid_user_not_registered");
+        }
+
+        const user = await db.user.update({
+          where: { id: existingUser.id },
+          data: compact({
+            username: profile.pid,
+            name_th: profile.nameTh,
+            name_eng: profile.nameEng,
+            email: profile.email,
+            title_th: profile.titleTh,
+          }),
+        });
+
+        return toSessionUser(user);
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
@@ -149,7 +189,7 @@ export const authOptions: NextAuthOptions = {
         const lastActive = (token.lastActive as number) || (token.iat as number);
         
         if (now - lastActive > timeoutMinutes * 60) {
-          return {} as any;
+          return {};
         }
         
         token.lastActive = now;

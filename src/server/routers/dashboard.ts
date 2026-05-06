@@ -1,10 +1,14 @@
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { startOfDay, endOfDay } from "date-fns";
 
 export const dashboardRouter = createTRPCRouter({
   getStats: protectedProcedure.query(async ({ ctx }) => {
     const userId = Number(ctx.session.user.id);
+    if (isNaN(userId)) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid session" });
+    }
     const today = new Date();
     // ปรับให้เป็นเที่ยงวันก่อนหาจุดเริ่ม/สิ้นสุดวัน เพื่อเลี่ยงปัญหา Timezone ขอบวัน
     const normalizedToday = new Date(today);
@@ -81,6 +85,9 @@ export const dashboardRouter = createTRPCRouter({
 
   getRecentActivities: protectedProcedure.query(async ({ ctx }) => {
     const userId = Number(ctx.session.user.id);
+    if (isNaN(userId)) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid session" });
+    }
 
     const recentAttendance = await ctx.db.attendanceRecord.findMany({
       where: { user_id: userId },

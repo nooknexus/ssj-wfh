@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { authOptions } from "@/lib/auth";
+import { SessionGuard } from "@/components/auth/session-guard";
 
 export default async function DashboardLayout({
   children,
@@ -11,7 +12,7 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -21,6 +22,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-slate-50/50 overflow-hidden">
+      <SessionGuard />
       <Sidebar/>
       
       {/* Main Content */}

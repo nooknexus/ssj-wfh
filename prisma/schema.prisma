@@ -76,18 +76,20 @@ enum AttendanceStatus {
 }
 
 model User {
-  id          Int     @id @default(autoincrement())
-  provider_id String? @unique @db.VarChar(50)
-  hash_cid    String? @db.VarChar(128)
-  username    String? @db.VarChar(20)
-  name_th     String? @db.VarChar(200)
-  name_eng    String? @db.VarChar(200)
-  email       String? @db.VarChar(200)
-  title_th    String? @db.VarChar(50)
-  position    String? @db.VarChar(200)
-  hcode       String? @db.VarChar(10)
-  hname       String? @db.VarChar(200)
-  role        Role    @default(staff)
+  id          Int        @id @default(autoincrement())
+  provider_id String?    @unique @db.VarChar(50)
+  hash_cid    String?    @db.VarChar(128)
+  username    String?    @db.VarChar(20)
+  name_th     String?    @db.VarChar(200)
+  name_eng    String?    @db.VarChar(200)
+  email       String?    @db.VarChar(200)
+  title_th    String?    @db.VarChar(50)
+  position    String?    @db.VarChar(200)
+  hcode       String?    @db.VarChar(10)
+  hname       String?    @db.VarChar(200)
+  /// Deprecated: ใช้ตาราง user_roles แทน คงไว้เพื่อ rollback จะลบใน release ถัดไป
+  role        Role       @default(staff)
+  roles       UserRole[]
 
   department_id Int?
   department    Department? @relation(fields: [department_id], references: [id])
@@ -116,6 +118,18 @@ model User {
   approved_wfh         WfhRequest[]         @relation("WfhApprover")
 
   @@map("users")
+}
+
+/// บทบาทเพิ่มเติมของผู้ใช้ (ทุกคนเป็น staff โดยปริยาย ไม่ต้องเก็บแถว staff)
+model UserRole {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  role       Role
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role])
+  @@map("user_roles")
 }
 
 model Department {

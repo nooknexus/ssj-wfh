@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/server/db";
 import { authenticateWithMOPH } from "@/lib/sso";
 import { authenticateWithThaiD } from "@/lib/thaid";
+import { normalizeRoles } from "@/lib/roles";
 
 function compact<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
@@ -15,14 +16,12 @@ function toSessionUser(user: {
   id: number;
   name_eng: string | null;
   name_th: string | null;
-  role: string;
   status: string;
 }) {
   return {
     id: user.id.toString(),
     name: user.name_th ?? user.name_eng ?? "ไม่ระบุชื่อ",
     email: user.email,
-    role: user.role,
     status: user.status,
   };
 }
@@ -152,7 +151,6 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
         token.status = user.status;
         token.name = user.name;
         token.email = user.email;
@@ -166,8 +164,8 @@ export const authOptions: NextAuthOptions = {
             id: true,
             name_eng: true,
             name_th: true,
-            role: true,
             status: true,
+            roles: { select: { role: true } },
           },
         });
 
@@ -175,7 +173,7 @@ export const authOptions: NextAuthOptions = {
           token.id = currentUser.id.toString();
           token.name = currentUser.name_th ?? currentUser.name_eng ?? token.name;
           token.email = currentUser.email ?? token.email;
-          token.role = currentUser.role;
+          token.roles = normalizeRoles(currentUser.roles.map((item) => item.role));
           token.status = currentUser.status;
         }
 
@@ -206,7 +204,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.name = token.name ?? session.user.name;
         session.user.email = token.email ?? session.user.email;
-        session.user.role = token.role;
+        session.user.roles = normalizeRoles(token.roles);
         session.user.status = token.status;
       }
       return session;

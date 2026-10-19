@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/server/db";
+import { normalizeRoles } from "@/lib/roles";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -22,8 +23,8 @@ export async function GET() {
       email: true,
       name_eng: true,
       name_th: true,
-      role: true,
       status: true,
+      roles: { select: { role: true } },
     },
   });
 
@@ -36,7 +37,7 @@ export async function GET() {
       id: user.id,
       email: user.email,
       name: user.name_th ?? user.name_eng ?? "ไม่ระบุชื่อ",
-      role: user.role,
+      roles: normalizeRoles(user.roles.map((item) => item.role)),
       status: user.status,
     },
   });

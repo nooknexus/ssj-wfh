@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { getRoleLabel } from "@/lib/roles";
+import { getRoleSummary } from "@/lib/roles";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -47,7 +47,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { data: session } = useSession();
   const { data: settings } = trpc.systemSetting.getAll.useQuery();
-  const adminNavigation = getAdminNavigation(session?.user?.role);
+  const adminNavigation = getAdminNavigation(session?.user?.roles);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -58,7 +58,7 @@ export function Sidebar() {
 
   const user = session?.user;
   const displayName = user?.name_th || user?.name || "ไม่ระบุชื่อ";
-  const displayRole = getRoleLabel(user?.role);
+  const roleSummary = getRoleSummary(user?.roles);
 
   return (
     <>
@@ -184,8 +184,8 @@ export function Sidebar() {
                     <span className="text-sm font-bold text-slate-800 truncate">
                       {displayName}
                     </span>
-                    <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">
-                      {displayRole}
+                    <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5" title={roleSummary.full}>
+                      {roleSummary.label}
                     </span>
                   </div>
                </div>

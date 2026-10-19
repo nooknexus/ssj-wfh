@@ -14,14 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "next-auth/react";
-import { getRoleLabel } from "@/lib/roles";
+import { getRoleSummary, hasAnyRole } from "@/lib/roles";
 
 export function Header() {
   const { data: session } = useSession();
   const user = session?.user;
 
   const displayName = user?.name_th || user?.name || "ไม่ระบุชื่อ";
-  const displayRole = getRoleLabel(user?.role);
+  const roleSummary = getRoleSummary(user?.roles);
   const displayEmail = user?.email || "";
 
   return (
@@ -35,7 +35,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        {user?.role !== "staff" && (
+        {hasAnyRole(user?.roles, ["superadmin", "itadmin", "hradmin", "leader"]) && (
           <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all">
             <Bell className="w-5 h-5" />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
@@ -55,7 +55,7 @@ export function Header() {
             </div>
             <div className="hidden lg:flex flex-col items-start text-sm">
               <span className="font-bold text-slate-800 leading-none">{displayName}</span>
-              <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-1">{displayRole}</span>
+              <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-1" title={roleSummary.full}>{roleSummary.label}</span>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64 mt-2 p-2 rounded-2xl border-white/50 bg-white/90 backdrop-blur-xl shadow-2xl" align="end">

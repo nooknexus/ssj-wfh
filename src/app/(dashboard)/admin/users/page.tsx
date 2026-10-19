@@ -9,7 +9,8 @@ import { CheckCircle2, Search, ShieldCheck, UserPlus, UserX, UserCheck } from "l
 import { Input } from "@/components/ui/input";
 import Swal from "sweetalert2";
 import { trpc } from "@/trpc/client";
-import { getRoleLabel } from "@/lib/roles";
+import { ROLE_LABELS, normalizeRoles, type AssignableRole } from "@/lib/roles";
+import { RoleEditorDialog } from "@/components/admin/role-editor-dialog";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -23,7 +24,7 @@ type UserRow = {
   position: string | null;
   hname: string | null;
   email: string | null;
-  role: string;
+  roles: { role: string }[];
   status: "pending" | "active" | "inactive";
   department_id: number | null;
   created_at: Date;
@@ -47,6 +48,7 @@ const STATUS_LABELS: Record<UserRow["status"], string> = {
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const utils = trpc.useUtils();
   
   const { data: users, isLoading } = trpc.user.getAll.useQuery(
@@ -69,16 +71,6 @@ export default function AdminUsersPage() {
     onSuccess: async () => {
       await utils.user.getAll.invalidate();
       toast.success("อัปเดตกลุ่มงานสำเร็จ");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const updateRole = trpc.user.updateRole.useMutation({
-    onSuccess: async () => {
-      await utils.user.getAll.invalidate();
-      toast.success("อัปเดตสิทธิ์สำเร็จ");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -120,10 +112,6 @@ export default function AdminUsersPage() {
   const handleDepartmentChange = (userId: number, deptId: string) => {
     const departmentId = deptId === "none" ? null : parseInt(deptId);
     updateDepartment.mutate({ userId, departmentId });
-  };
-
-  const handleRoleChange = (userId: number, role: string) => {
-    updateRole.mutate({ userId, role: role as any });
   };
 
   const pendingCount = users?.filter((user) => user.status === "pending").length ?? 0;
@@ -192,7 +180,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user: any) => (
+                users.map((user) => (
                   <TableRow key={user.id} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell className="pl-6 whitespace-normal">
                       <div className="space-y-0.5">
@@ -211,7 +199,7 @@ export default function AdminUsersPage() {
                       <Select
                         key={`${user.id}-${user.department_id}`}
                         value={user.department_id?.toString() || "none"}
-                        onValueChange={(val) => handleDepartmentChange(user.id, val)}
+                        onValueChange={(val) => handleDepartmentChange(user.id, val ?? "none")}
                         disabled={updateDepartment.isPending}
                       >
                         <SelectTrigger className="h-9 text-sm border-slate-200 bg-white group-hover:border-slate-300 transition-colors">
@@ -229,25 +217,25 @@ export default function AdminUsersPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="min-w-[180px]">
-                      <Select
-                        value={user.role}
-                        onValueChange={(val) => handleRoleChange(user.id, val)}
-                        disabled={updateRole.isPending}
-                      >
-                        <SelectTrigger className="h-9 text-sm border-slate-200 bg-white group-hover:border-slate-300 transition-colors">
-                          <SelectValue>
-                            {getRoleLabel(user.role)}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="superadmin">ผู้ดูแลระบบสูงสุด</SelectItem>
-                          <SelectItem value="hradmin">ผู้ดูแล HR</SelectItem>
-                          <SelectItem value="itadmin">ผู้ดูแล IT</SelectItem>
-                          <SelectItem value="leader">หัวหน้างาน</SelectItem>
-                          <SelectItem value="staff">เจ้าหน้าที่</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <TableCell className="min-w-[200px] whitespace-normal">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {normalizeRoles(user.roles.map((item) => item.role)).map((role) => (
+                          <Badge
+                            key={role}
+                            className={role === "staff" ? "bg-slate-100 text-slate-600 border-0" : "bg-emerald-100 text-emerald-700 border-0"}
+                          >
+                            {ROLE_LABELS[role]}
+                          </Badge>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                          onClick={() => setEditingUser(user)}
+                        >
+                          แก้ไข
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge className={`${STATUS_STYLES[user.status as UserRow["status"]]} font-medium whitespace-nowrap`}>
@@ -303,6 +291,24 @@ export default function AdminUsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {editingUser ? (
+        <RoleEditorDialog
+          key={editingUser.id}
+          userId={editingUser.id}
+          userName={editingUser.name_th ?? editingUser.name_eng ?? `#${editingUser.id}`}
+          currentRoles={toAssignableRoles(editingUser.roles)}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingUser(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
+
+const toAssignableRoles = (roles: UserRow["roles"]): AssignableRole[] =>
+  normalizeRoles(roles.map((item) => item.role)).filter(
+    (role): role is AssignableRole => role !== "staff",
+  );

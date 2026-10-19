@@ -13,14 +13,16 @@ import Swal from "sweetalert2";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { WFH_APPROVER_ROLES, hasAnyRole } from "@/lib/roles";
 
 export default function WfhApprovalsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const utils = trpc.useUtils();
+  const canApprove = hasAnyRole(session?.user?.roles, WFH_APPROVER_ROLES);
 
   const { data: requests, isLoading } = trpc.wfh.getDepartmentRequests.useQuery(undefined, {
-    enabled: status === "authenticated" && session?.user?.role === "leader",
+    enabled: status === "authenticated" && canApprove,
   });
 
   const updateStatusMutation = trpc.wfh.updateStatus.useMutation({
@@ -33,10 +35,10 @@ export default function WfhApprovalsPage() {
   });
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role !== "leader" && session?.user?.role !== "superadmin" && session?.user?.role !== "hradmin") {
+    if (status === "authenticated" && !canApprove) {
       router.push("/attendance");
     }
-  }, [status, session, router]);
+  }, [status, canApprove, router]);
 
   const handleApprove = (id: number, name: string) => {
     Swal.fire({

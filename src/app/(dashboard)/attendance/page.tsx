@@ -12,6 +12,7 @@ import { Plus, FileText, Calendar as CalendarIcon, Clock, CheckSquare } from "lu
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ModuleGuard } from "@/components/layout/module-guard";
+import { WFH_APPROVER_ROLES, hasAnyRole } from "@/lib/roles";
 
 export default function AttendancePage() {
   const { data: session } = useSession();
@@ -51,7 +52,7 @@ export default function AttendancePage() {
                 <p className="text-xs text-slate-500">ประวัติการขอปฏิบัติงานที่บ้าน</p>
               </div>
               <div className="flex gap-2">
-                {session?.user?.role === "leader" && (
+                {hasAnyRole(session?.user?.roles, WFH_APPROVER_ROLES) && (
                   <Link href="/wfh/approvals">
                     <Button size="sm" variant="outline" className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50">
                       <CheckSquare className="w-3.5 h-3.5 mr-1.5"/>

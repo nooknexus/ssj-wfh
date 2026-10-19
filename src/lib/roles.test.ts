@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canApproveDepartmentRequest,
+  canApproveWfhRequest,
   getAdminNavigation,
   getPrimaryRole,
   getRoleLabel,
@@ -146,5 +147,27 @@ describe("canApproveDepartmentRequest", () => {
   it("should deny roles that are not approvers", () => {
     expect(canApproveDepartmentRequest({ approverRoles: ["staff"], approverDepartmentId: 1, requesterDepartmentId: 1 })).toBe(false);
     expect(canApproveDepartmentRequest({ approverRoles: ["itadmin"], approverDepartmentId: 1, requesterDepartmentId: 1 })).toBe(false);
+  });
+});
+
+describe("canApproveWfhRequest", () => {
+  it("should allow leader only within the same department", () => {
+    expect(canApproveWfhRequest({ approverRoles: ["leader"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(true);
+    expect(canApproveWfhRequest({ approverRoles: ["leader"], approverDepartmentId: 3, requesterDepartmentId: 4 })).toBe(false);
+  });
+
+  it("should deny leader when either side has no department", () => {
+    expect(canApproveWfhRequest({ approverRoles: ["leader"], approverDepartmentId: null, requesterDepartmentId: null })).toBe(false);
+    expect(canApproveWfhRequest({ approverRoles: ["leader"], approverDepartmentId: 3, requesterDepartmentId: null })).toBe(false);
+  });
+
+  it("should deny hradmin and superadmin who are not leaders", () => {
+    expect(canApproveWfhRequest({ approverRoles: ["hradmin"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(false);
+    expect(canApproveWfhRequest({ approverRoles: ["superadmin"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(false);
+  });
+
+  it("should allow hradmin who is also leader of the same department", () => {
+    expect(canApproveWfhRequest({ approverRoles: ["hradmin", "leader"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(true);
+    expect(canApproveWfhRequest({ approverRoles: ["hradmin", "leader"], approverDepartmentId: 3, requesterDepartmentId: 4 })).toBe(false);
   });
 });

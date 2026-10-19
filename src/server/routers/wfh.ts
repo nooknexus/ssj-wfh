@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HR_ROLES, WFH_APPROVER_ROLES, canApproveDepartmentRequest, hasAnyRole, hasRole } from "@/lib/roles";
+import { HR_ROLES, canApproveWfhRequest, hasAnyRole, hasRole } from "@/lib/roles";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const wfhRouter = createTRPCRouter({
@@ -96,8 +96,13 @@ export const wfhRouter = createTRPCRouter({
       const currentUserId = parseInt((ctx.session.user as any).id);
       const currentUser = await ctx.db.user.findUnique({
         where: { id: currentUserId },
-        select: { roles: { select: { role: true } } }
+        select: { department_id: true, roles: { select: { role: true } } }
       });
+
+      // ต้องมีกลุ่มงานก่อนจึงส่งคำขอได้ เพราะหัวหน้ากลุ่มงานเป็นผู้อนุมัติ
+      if (currentUser?.department_id == null) {
+        throw new Error("ยังไม่ได้กำหนดกลุ่มงาน กรุณาติดต่อผู้ดูแลระบบก่อนส่งคำขอ WFH");
+      }
 
       const isLeader = hasRole(currentUser?.roles.map((item) => item.role), "leader");
 
@@ -144,7 +149,16 @@ export const wfhRouter = createTRPCRouter({
       },
     });
 
-    return requests.sort((a, b) => {
+    const withPermission = requests.map((request) => ({
+      ...request,
+      canApprove: canApproveWfhRequest({
+        approverRoles: roles ?? [],
+        approverDepartmentId: currentUser.department_id,
+        requesterDepartmentId: request.user.department_id,
+      }),
+    }));
+
+    return withPermission.sort((a, b) => {
       if (a.status === 'pending' && b.status !== 'pending') return -1;
       if (a.status !== 'pending' && b.status === 'pending') return 1;
       return 0;
@@ -168,7 +182,7 @@ export const wfhRouter = createTRPCRouter({
       });
       const roles = currentUser?.roles.map((item) => item.role);
 
-      if (!currentUser || !hasAnyRole(roles, WFH_APPROVER_ROLES)) {
+      if (!currentUser || !hasRole(roles, "leader")) {
         throw new Error("ไม่มีสิทธิ์ในการอนุมัติ");
       }
 
@@ -181,14 +195,14 @@ export const wfhRouter = createTRPCRouter({
         throw new Error("ไม่พบคำขอ");
       }
 
-      // หัวหน้างาน (ที่ไม่ใช่ hradmin/superadmin) อนุมัติได้เฉพาะกลุ่มงานของตัวเอง และต้องมีกลุ่มงาน
-      const allowed = canApproveDepartmentRequest({
+      // เฉพาะหัวหน้ากลุ่มงานของผู้ขอเท่านั้นที่อนุมัติได้ (hradmin/superadmin ดูได้อย่างเดียว)
+      const allowed = canApproveWfhRequest({
         approverRoles: roles ?? [],
         approverDepartmentId: currentUser.department_id,
         requesterDepartmentId: request.user.department_id,
       });
       if (!allowed) {
-        throw new Error("ไม่สามารถอนุมัติคำขอของแผนกอื่นได้");
+        throw new Error("อนุมัติได้เฉพาะคำขอของกลุ่มงานที่ท่านเป็นหัวหน้าเท่านั้น");
       }
 
       return ctx.db.wfhRequest.update({

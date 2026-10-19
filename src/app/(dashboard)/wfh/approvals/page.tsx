@@ -176,7 +176,7 @@ export default function WfhApprovalsPage() {
                         {getStatusBadge(record.status)}
                       </TableCell>
                       <TableCell>
-                        {record.status === "pending" ? (
+                        {record.status === "pending" && record.canApprove ? (
                           <div className="flex justify-center gap-2">
                             <Button 
                               size="sm" 
@@ -199,7 +199,7 @@ export default function WfhApprovalsPage() {
                           </div>
                         ) : (
                           <div className="text-center text-xs text-slate-400">
-                            -
+                            {record.status === "pending" ? "รอหัวหน้ากลุ่มงานอนุมัติ" : "-"}
                           </div>
                         )}
                       </TableCell>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HR_ROLES, WFH_APPROVER_ROLES, hasAnyRole, hasRole } from "@/lib/roles";
+import { HR_ROLES, WFH_APPROVER_ROLES, canApproveDepartmentRequest, hasAnyRole, hasRole } from "@/lib/roles";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const wfhRouter = createTRPCRouter({
@@ -181,9 +181,13 @@ export const wfhRouter = createTRPCRouter({
         throw new Error("ไม่พบคำขอ");
       }
 
-      // If leader, verify department
-      // หัวหน้างาน (ที่ไม่ใช่ hradmin/superadmin) อนุมัติได้เฉพาะกลุ่มงานของตัวเอง
-      if (!hasAnyRole(roles, HR_ROLES) && request.user.department_id !== currentUser.department_id) {
+      // หัวหน้างาน (ที่ไม่ใช่ hradmin/superadmin) อนุมัติได้เฉพาะกลุ่มงานของตัวเอง และต้องมีกลุ่มงาน
+      const allowed = canApproveDepartmentRequest({
+        approverRoles: roles ?? [],
+        approverDepartmentId: currentUser.department_id,
+        requesterDepartmentId: request.user.department_id,
+      });
+      if (!allowed) {
         throw new Error("ไม่สามารถอนุมัติคำขอของแผนกอื่นได้");
       }
 

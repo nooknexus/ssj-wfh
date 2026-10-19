@@ -52,9 +52,10 @@ export const userRouter = createTRPCRouter({
         ],
       });
     }),
-  // รายชื่อผู้ใช้สำหรับ dropdown มอบหมายงาน คืนเฉพาะข้อมูลที่ใช้แสดงผล
+  // รายชื่อผู้ใช้ที่ active สำหรับ dropdown มอบหมายงาน คืนเฉพาะข้อมูลที่ใช้แสดงผล
   listAssignable: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.user.findMany({
+      where: { status: "active" },
       select: {
         id: true,
         title_th: true,

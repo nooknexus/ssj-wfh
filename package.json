@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "dotenv -e .env -- next start",
     "lint": "eslint",
-    "sync-sheet": "tsx src/server/scripts/sync-google-sheet.ts"
+    "sync-sheet": "tsx src/server/scripts/sync-google-sheet.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
@@ -57,7 +59,8 @@
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

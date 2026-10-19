@@ -25,7 +25,7 @@ const SSO_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function subscribeToLocationChange() {
-  return () => {};
+  return () => { };
 }
 
 function getLocationSearch() {
@@ -153,48 +153,53 @@ export default function LoginPage() {
                 ) : null}
 
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="mb-3 flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                        <KeyRound className="size-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-950">
-                          ลงทะเบียน/เข้าสู่ระบบ
-                        </h3>
-                        <p className="text-sm text-slate-500">MOPH ProviderID</p>
+                  <div className="rounded-xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/50 p-4.5 shadow-md shadow-emerald-500/10 transition-all hover:border-emerald-500/60">
+                    <div className="mb-3.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-sm shadow-emerald-500/30">
+                          <KeyRound className="size-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-slate-950">
+                            ลงทะเบียน / เข้าสู่ระบบด้วย MOPH ProviderID
+                          </h3>
+                          <p className="text-xs text-slate-500">สำหรับบุคลากรสาธารณสุข กระทรวงสาธารณสุข</p>
+                        </div>
                       </div>
                     </div>
                     <Button
                       onClick={handleMOPHLogin}
                       disabled={isProcessingSSO}
-                      className="w-full h-12 justify-between rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white shadow-sm hover:bg-emerald-800"
+                      className="group w-full h-12 justify-between rounded-lg bg-gradient-to-r from-emerald-600 to-teal-700 px-4 text-base font-semibold text-white shadow-md shadow-emerald-600/25 transition-all hover:from-emerald-700 hover:to-teal-800 hover:shadow-lg hover:shadow-emerald-600/35 active:scale-[0.99]"
                     >
-                      <span>MOPH ProviderID</span>
-                      <ArrowRight className="size-5" />
+                      <span>เข้าสู่ระบบด้วย MOPH ProviderID</span>
+                      <ArrowRight className="size-5 text-emerald-100 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="mb-3 flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
-                        <BadgeCheck className="size-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-950">
-                          เข้าสู่ระบบ
-                        </h3>
-                        <p className="text-sm text-slate-500">ThaiD</p>
+                  <div className="rounded-xl border-2 border-blue-500/40 bg-gradient-to-br from-blue-50/70 via-white to-sky-50/50 p-4.5 shadow-md shadow-blue-500/10 transition-all hover:border-blue-500/60">
+                    <div className="mb-3.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 text-white shadow-sm shadow-blue-500/30">
+                          <BadgeCheck className="size-5" />
+                        </div>
+                        <div>
+
+                          <h3 className="text-base font-bold text-slate-950">
+                            เข้าสู่ระบบด้วย ThaiD
+                          </h3>
+
+                          <p className="text-xs text-slate-500">สแกน QR Code ผ่านแอปพลิเคชัน ThaiD</p>
+                        </div>
                       </div>
                     </div>
                     <Button
                       onClick={handleThaiDLogin}
                       disabled={isProcessingSSO}
-                      variant="outline"
-                      className="w-full h-12 justify-between rounded-lg border-sky-200 bg-white px-4 text-base font-semibold text-slate-900 shadow-sm hover:bg-sky-50 hover:text-slate-950"
+                      className="group w-full h-12 justify-between rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 text-base font-semibold text-white shadow-md shadow-blue-600/25 transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-blue-600/35 active:scale-[0.99]"
                     >
-                      <span>ThaiD</span>
-                      <ArrowRight className="size-5 text-sky-700" />
+                      <span>เข้าสู่ระบบด้วย ThaiD</span>
+                      <ArrowRight className="size-5 text-blue-100 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </div>
                 </div>
@@ -202,7 +207,7 @@ export default function LoginPage() {
             </div>
           </div>
         </Card>
-        
+
         <p className="text-center text-sm font-medium text-slate-500 mt-8">
           สงวนลิขสิทธิ์ &copy; {new Date().getFullYear()} สำนักงานสาธารณสุขจังหวัดพิษณุโลก
         </p>

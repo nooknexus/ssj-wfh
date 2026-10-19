@@ -4,7 +4,8 @@ import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
 import { ASSIGNABLE_ROLES, USER_MANAGER_ROLES, validateRoleChange } from "@/lib/roles";
 
 export const userRouter = createTRPCRouter({
-  getAll: protectedProcedure
+  // รายชื่อผู้ใช้แบบเต็ม (รวม email/roles) สำหรับหน้าจัดการผู้ใช้งาน
+  getAll: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         search: z.string().trim().optional(),
@@ -51,6 +52,20 @@ export const userRouter = createTRPCRouter({
         ],
       });
     }),
+  // รายชื่อผู้ใช้สำหรับ dropdown มอบหมายงาน คืนเฉพาะข้อมูลที่ใช้แสดงผล
+  listAssignable: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findMany({
+      select: {
+        id: true,
+        title_th: true,
+        name_th: true,
+        name_eng: true,
+        position: true,
+        department: { select: { id: true, name: true } },
+      },
+      orderBy: { name_th: "asc" },
+    });
+  }),
   updateStatus: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({

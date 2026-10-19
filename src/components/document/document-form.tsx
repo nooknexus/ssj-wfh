@@ -57,7 +57,7 @@ export function DocumentForm({ docType, onSuccess, onCancel }: DocumentFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get users for assignee dropdown
-  const { data: users, isLoading: isLoadingUsers } = trpc.user.getAll.useQuery();
+  const { data: users, isLoading: isLoadingUsers } = trpc.user.listAssignable.useQuery();
 
   const utils = trpc.useUtils();
   const createDocument = trpc.document.create.useMutation({

@@ -10,10 +10,11 @@ const kanit = Kanit({
 
 import { TRPCReactProvider } from "@/trpc/Provider";
 import { Toaster } from "@/components/ui/sonner";
+import { APP_CONFIG } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "PLK WFH System",
-  description: "Unified Web Portal for Phitsanulok Provincial Health Office",
+  title: APP_CONFIG.name,
+  description: APP_CONFIG.description,
 };
 
 export default function RootLayout({

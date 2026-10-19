@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  name: "PLK WFH System",
+  name: "PLK Workspace",
   description: "Unified Web Portal for Phitsanulok Provincial Health Office",
   version: "1.0.0",
 };

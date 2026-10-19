@@ -1,5 +1,6 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { z } from "zod";
+import { APP_CONFIG } from "@/lib/constants";
 
 export const systemSettingRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -17,7 +18,7 @@ export const systemSettingRouter = createTRPCRouter({
       module_meeting: "true",
       module_document: "true",
       allow_registration: "true",
-      sys_name: "WFH System",
+      sys_name: APP_CONFIG.name,
       moph_alert_checkin_enabled: "true",
       moph_alert_checkout_enabled: "true",
       moph_alert_reminder_enabled: "true",
@@ -44,7 +45,7 @@ export const systemSettingRouter = createTRPCRouter({
     }, {} as Record<string, string>);
 
     const defaults: Record<string, string> = {
-      sys_name: "WFH System",
+      sys_name: APP_CONFIG.name,
     };
 
     return { ...defaults, ...settingsMap };

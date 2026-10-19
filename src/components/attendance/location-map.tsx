@@ -40,8 +40,17 @@ function LocationMarker({ position, setPosition }: { position: L.LatLng | null; 
   });
 
   useEffect(() => {
-    if (position) {
-      map.flyTo(position, map.getZoom());
+    if (position && map) {
+      const timer = setTimeout(() => {
+        try {
+          if (map.getContainer()) {
+            map.flyTo(position, map.getZoom());
+          }
+        } catch {
+          // Ignore Leaflet errors during rapid transitions
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [position, map]);
 
@@ -68,7 +77,18 @@ interface LocationMapProps {
 function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([lat, lng], map.getZoom());
+    if (map) {
+      const timer = setTimeout(() => {
+        try {
+          if (map.getContainer()) {
+            map.flyTo([lat, lng], map.getZoom());
+          }
+        } catch {
+          // Ignore
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [lat, lng, map]);
   return null;
 }
@@ -110,7 +130,7 @@ export default function LocationMap({
     <div className="flex flex-col gap-4">
       <div className={readOnly ? "h-[300px] w-full rounded-xl overflow-hidden relative z-0 border border-slate-200 shadow-inner" : "h-[350px] w-full rounded-md overflow-hidden relative z-0 shadow-inner"}>
         <MapContainer
-          key={readOnly ? `readonly-${initialLocation?.lat}-${initialLocation?.lng}` : "editable-map"}
+          key={readOnly ? "readonly-map" : "editable-map"}
           center={userPos || officePos}
           zoom={17}
           scrollWheelZoom={!readOnly}

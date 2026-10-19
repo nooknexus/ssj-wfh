@@ -118,6 +118,23 @@ export default function AdminSettingsPage() {
                 />
               </div>
             </div>
+            <div className="pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="space-y-0.5 pr-3">
+                  <Label htmlFor="allow_manual_location" className="font-medium text-slate-800 text-sm cursor-pointer">
+                    การปักพิกัดแบบแมนนวล (ปุ่มอัปเดต)
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    แสดงปุ่ม &quot;อัปเดต&quot; ให้ผู้ใช้เปิดแผนที่เพื่อปักหมุดพิกัดเองได้ตอนลงเวลางาน (หากปิด ผู้ใช้จะลงเวลาด้วยพิกัด GPS อัตโนมัติเท่านั้น)
+                  </p>
+                </div>
+                <Switch 
+                  id="allow_manual_location"
+                  checked={formData.allow_manual_location !== "false"} 
+                  onCheckedChange={() => handleToggle("allow_manual_location")}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

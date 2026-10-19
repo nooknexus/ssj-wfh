@@ -13,6 +13,7 @@ import { startOfDay } from "date-fns";
 import { MapPin, Clock, Camera, CheckCircle2, AlertCircle, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
+import { isManualLocationAllowed } from "@/lib/attendance-utils";
 import {
   Dialog,
   DialogContent,
@@ -48,9 +49,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // distance in meters
 }
 
+type WorkType = "wfh" | "office" | "official_trip" | "onsite";
+
 export function AttendanceCard() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [workType, setWorkType] = useState<string>("office");
+  const [workType, setWorkType] = useState<WorkType>("office");
   const [tasks, setTasks] = useState("");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -73,6 +76,8 @@ export function AttendanceCard() {
     lat: settings?.office_lat ? parseFloat(settings.office_lat) : OFFICE_LAT,
     lng: settings?.office_lng ? parseFloat(settings.office_lng) : OFFICE_LNG
   }), [settings]);
+
+  const allowManualLocation = isManualLocationAllowed(settings?.allow_manual_location);
   
   // ใช้ useMemo เพื่อป้องกันการสร้าง Date ใหม่ทุกครั้งที่เรนเดอร์ (แก้ปัญหาลูป)
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -148,7 +153,7 @@ export function AttendanceCard() {
     return distance <= OFFICE_RADIUS_METERS;
   }, [distance, OFFICE_RADIUS_METERS]);
 
-  const fetchLocation = () => {
+  const fetchLocation = (onSuccess?: (loc: { lat: number; lng: number }) => void) => {
     setIsGettingLocation(true);
     if (!navigator.geolocation) {
       toast.error("เบราว์เซอร์ของคุณไม่รองรับการดึงพิกัด");
@@ -156,30 +161,51 @@ export function AttendanceCard() {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+    const options: PositionOptions = { 
+      enableHighAccuracy: true, 
+      timeout: 10000,
+      maximumAge: 0 
+    };
+
+    const handleSuccess = (position: GeolocationPosition) => {
+      const newLoc = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      setLocation(newLoc);
+      setIsGettingLocation(false);
+      if (onSuccess) onSuccess(newLoc);
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      // หาก High Accuracy ล้มเหลว (Code 2: Unavailable หรือ Code 3: Timeout) ให้ลองแบบธรรมดา
+      if (options.enableHighAccuracy && (error.code === 2 || error.code === 3)) {
+        console.log("High accuracy failed, retrying with normal accuracy...");
+        navigator.geolocation.getCurrentPosition(handleSuccess, handleFinalError, {
+          ...options,
+          enableHighAccuracy: false,
+          timeout: 15000
         });
-        setIsGettingLocation(false);
-      },
-      (error) => {
-        console.error(error);
-        if (error.code === error.PERMISSION_DENIED) {
-           toast.error("คุณปฏิเสธการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ในตั้งค่าเบราว์เซอร์");
-        } else {
-           toast.error("ไม่สามารถดึงพิกัดได้: " + error.message);
-        }
-        setIsGettingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      } else {
+        handleFinalError(error);
+      }
+    };
+
+    const handleFinalError = (error: GeolocationPositionError) => {
+      console.error(error);
+      if (error.code === error.PERMISSION_DENIED) {
+        toast.error("คุณปฏิเสธการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ในตั้งค่าเบราว์เซอร์");
+      } else {
+        toast.error("ไม่สามารถดึงพิกัดได้: " + error.message);
+      }
+      setIsGettingLocation(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
   };
 
   const requestPermission = async () => {
     try {
-      // สำหรับเบราว์เซอร์บางรุ่นที่รองรับ Permissions API
       if (navigator.permissions && navigator.permissions.query) {
         const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         if (result.state === 'denied') {
@@ -196,6 +222,7 @@ export function AttendanceCard() {
   };
 
   const handleOpenMap = () => {
+    if (!allowManualLocation) return;
     setIsMapOpen(true);
     if (!location) {
       fetchLocation();
@@ -204,33 +231,12 @@ export function AttendanceCard() {
 
   const handleCheckIn = async () => {
     if (!location) {
-      setIsGettingLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLoc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setLocation(newLoc);
-          setIsGettingLocation(false);
-          checkInMutation.mutate({
-            workType: workType as any,
-            lat: newLoc.lat,
-            lng: newLoc.lng,
-          });
-        },
-        (error) => {
-          setIsGettingLocation(false);
-          toast.error("กรุณาเปิดสิทธิ์การเข้าถึงตำแหน่งก่อนลงเวลา");
-        }
-      );
+      fetchLocation((newLoc) => {
+        checkInMutation.mutate({ workType, lat: newLoc.lat, lng: newLoc.lng });
+      });
       return;
     }
-    checkInMutation.mutate({
-      workType: workType as any,
-      lat: location.lat,
-      lng: location.lng,
-    });
+    checkInMutation.mutate({ workType, lat: location.lat, lng: location.lng });
   };
 
   const handleCheckOut = async () => {
@@ -240,33 +246,12 @@ export function AttendanceCard() {
     }
 
     if (!location) {
-      setIsGettingLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLoc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setLocation(newLoc);
-          setIsGettingLocation(false);
-          checkOutMutation.mutate({
-            tasks,
-            lat: newLoc.lat,
-            lng: newLoc.lng,
-          });
-        },
-        (error) => {
-          setIsGettingLocation(false);
-          toast.error("กรุณาเปิดสิทธิ์การเข้าถึงตำแหน่งก่อนลงเวลา");
-        }
-      );
+      fetchLocation((newLoc) => {
+        checkOutMutation.mutate({ tasks, lat: newLoc.lat, lng: newLoc.lng });
+      });
       return;
     }
-    checkOutMutation.mutate({
-      tasks,
-      lat: location.lat,
-      lng: location.lng,
-    });
+    checkOutMutation.mutate({ tasks, lat: location.lat, lng: location.lng });
   };
 
   if (isLoading || isWfhLoading) return <div className="animate-pulse h-64 bg-slate-100 rounded-lg" />;
@@ -274,7 +259,7 @@ export function AttendanceCard() {
   const isCheckedIn = !!status?.check_in_time;
   const isCheckedOut = !!status?.check_out_time;
 
-  const workTypes = [
+  const workTypes: { id: WorkType; label: string; thLabel: string; icon: React.ReactNode; color: string }[] = [
     { id: "office", label: "Office", thLabel: "(เข้าสำนักงาน)", icon: <Clock className="w-5 h-5" />, color: "border-blue-500 text-blue-600 bg-blue-50" },
     { id: "wfh", label: "WFH", thLabel: "(ปฏิบัติงานที่บ้าน)", icon: <MapPin className="w-5 h-5" />, color: "border-purple-500 text-purple-600 bg-purple-50" },
     { id: "onsite", label: "Onsite", thLabel: "(ลงพื้นที่)", icon: <MapPin className="w-5 h-5" />, color: "border-orange-500 text-orange-600 bg-orange-50" },
@@ -370,15 +355,21 @@ export function AttendanceCard() {
                         <div className={cn(
                           "p-2.5 rounded-xl transition-colors",
                           location 
-                            ? (isInArea ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600") 
+                            ? (workType === "office" 
+                                ? (isInArea ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600") 
+                                : "bg-emerald-100 text-emerald-600")
                             : "bg-amber-100 text-amber-600 animate-pulse"
                         )}>
                           <MapPin className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                            {location ? (isInArea ? "อยู่ในพื้นที่สำนักงาน" : "อยู่นอกพื้นที่สำนักงาน") : isGettingLocation ? "กำลังดึงพิกัด..." : "ยังไม่พบพิกัด"}
-                            {location && (
+                            {location 
+                              ? (workType === "office"
+                                  ? (isInArea ? "อยู่ในพื้นที่สำนักงาน" : "อยู่นอกพื้นที่สำนักงาน")
+                                  : "ระบุพิกัดปัจจุบันแล้ว")
+                              : (isGettingLocation ? "กำลังดึงพิกัด..." : "ยังไม่พบพิกัด")}
+                            {location && workType === "office" && (
                               <span className={cn(
                                 "text-[10px] px-1.5 py-0.5 rounded-full",
                                 isInArea ? "bg-emerald-500 text-white" : "bg-blue-500 text-white"
@@ -394,19 +385,21 @@ export function AttendanceCard() {
                       </div>
                       
                       <div className="flex flex-wrap gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-blue-600 font-bold hover:bg-blue-50 rounded-lg text-[11px]"
-                          onClick={handleOpenMap}
-                        >
-                          อัปเดต
-                        </Button>
+                        {allowManualLocation && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-blue-600 font-bold hover:bg-blue-50 rounded-lg text-[11px]"
+                            onClick={handleOpenMap}
+                          >
+                            อัปเดต
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 px-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-[11px]"
-                          onClick={fetchLocation}
+                          onClick={() => fetchLocation()}
                           disabled={isGettingLocation}
                         >
                           {isGettingLocation ? "..." : "รีโหลด"}
@@ -535,14 +528,16 @@ export function AttendanceCard() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-blue-600 font-bold hover:bg-blue-50"
-                      onClick={handleOpenMap}
-                    >
-                      อัปเดต
-                    </Button>
+                    {allowManualLocation && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-600 font-bold hover:bg-blue-50"
+                        onClick={handleOpenMap}
+                      >
+                        อัปเดต
+                      </Button>
+                    )}
                   </div>
                   {location && (
                     <div className="mt-1 rounded-xl overflow-hidden shadow-sm border border-emerald-200/60 z-0">

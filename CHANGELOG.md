@@ -2,6 +2,21 @@
 
 บันทึกการเปลี่ยนแปลงของโครงการ PLK WFH & Attendance System
 
+## [Unreleased]
+
+### 🚀 ฟีเจอร์ใหม่
+- **Multi-Role**: ผู้ใช้หนึ่งคนมีได้หลายบทบาท (เช่น ผู้ดูแล IT + หัวหน้างาน) ผ่านตาราง `user_roles` และหน้าจัดการผู้ใช้มี Dialog เลือกหลายบทบาท
+- เมนู Admin รวมเมนูของทุกบทบาทที่ผู้ใช้มี
+- `hradmin` เห็นและอนุมัติคำขอ WFH ได้ทุกกลุ่มงาน
+
+### 🛡️ ความปลอดภัย
+- เพิ่ม `roleProcedure` ตรวจบทบาทฝั่ง server ให้กับ procedure ฝั่ง admin (จัดการผู้ใช้, กลุ่มงาน, ตั้งค่าระบบ, Sync ข้อมูลลา) ก่อนหน้านี้ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกได้
+- `systemSetting.update` validate input ด้วย Zod แทน `z.any()`
+- เพิ่ม guard ฝั่ง server ให้หน้า `/admin/*`
+
+### 🗄️ Migration
+- รัน `prisma/migrations/20261019_multi_roles/migration.sql` ก่อน deploy (สร้างตาราง `user_roles` และคัดลอกบทบาทเดิม)
+
 ## [0.4.0] - 2026-05-01
 
 ### 🚀 ฟีเจอร์ใหม่

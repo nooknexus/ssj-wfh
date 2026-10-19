@@ -44,7 +44,13 @@
 5. **Enforced MOPH SSO**
    - ระบบปิดการใช้งาน `CredentialsProvider` (Mock Login) อย่างถาวร เพื่อความปลอดภัยและบังคับใช้มาตรฐาน SSO ของกระทรวงฯ
    - การลงทะเบียนใหม่ถูกควบคุมผ่าน `allow_registration` ใน Admin Settings
-6. **Session Management**
+6. **Multi-Role (หลายบทบาท)**
+   - ผู้ใช้หนึ่งคนมีได้หลายบทบาท เก็บในตาราง `user_roles` (ทุกคนเป็น `staff` โดยปริยาย ไม่ต้องเก็บแถว staff) คอลัมน์ `users.role` เลิกใช้แล้ว คงไว้เพื่อ rollback
+   - Session ใช้ `session.user.roles: AppRole[]` (มี `staff` เสมอ) ห้ามเช็คด้วย `role === "..."` ให้ใช้ `hasRole` / `hasAnyRole` จาก `src/lib/roles.ts`
+   - ฝั่ง server ใช้ `roleProcedure([...])` ใน `src/server/trpc.ts` สำหรับ procedure ที่ต้องการสิทธิ์ และหน้า `/admin/*` มี guard ใน `admin/layout.tsx`
+   - `leader` ผูกกับ `users.department_id` (อนุมัติได้เฉพาะกลุ่มงานตัวเอง) ส่วน `hradmin`/`superadmin` เห็นคำขอ WFH ทุกกลุ่มงาน
+   - กำหนดบทบาทได้โดย itadmin/superadmin เท่านั้น และเฉพาะ superadmin ที่ให้/ถอด superadmin ได้
+7. **Session Management**
    - รองรับการตั้งค่า `session_timeout` แบบ Dynamic โดยตรวจสอบ `lastActive` ใน JWT Token เทียบกับค่าที่ตั้งไว้ในฐานข้อมูลทุกครั้งที่มีการ Request ข้อมูล
 
 ## 📂 โครงสร้าง Directory ที่สำคัญ

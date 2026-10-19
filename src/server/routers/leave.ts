@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
-import { HR_ROLES } from "@/lib/roles";
+import { canApproveDepartmentRequest, hasAnyRole, HR_ROLES, WFH_APPROVER_ROLES } from "@/lib/roles";
 import { syncLeavesFromGoogleSheet } from "../services/leave-sync";
 
 export const leaveRouter = createTRPCRouter({
@@ -31,7 +32,7 @@ export const leaveRouter = createTRPCRouter({
   }),
 
   // Get all leaves (Admin) with pagination and search
-  getAllLeaves: protectedProcedure
+  getAllLeaves: roleProcedure(HR_ROLES)
     .input(
       z.object({
         page: z.number().default(1),
@@ -107,12 +108,24 @@ export const leaveRouter = createTRPCRouter({
       };
     }),
 
-  // Get all pending leaves for Admin/Manager approval
-  getPendingLeaves: protectedProcedure.query(async ({ ctx }) => {
-    // In a real app, ensure the user has ADMIN or MANAGER role
+  // Get all pending leaves for approval
+  // hradmin/superadmin เห็นทุกกลุ่มงาน ส่วน leader เห็นเฉพาะคำขอของผู้ใช้ในกลุ่มงานตัวเอง
+  getPendingLeaves: roleProcedure(WFH_APPROVER_ROLES).query(async ({ ctx }) => {
+    const roles = ctx.session.user.roles;
+    let departmentFilter = {};
+    if (!hasAnyRole(roles, HR_ROLES)) {
+      const approver = await ctx.db.user.findUnique({
+        where: { id: Number(ctx.session.user.id) },
+        select: { department_id: true },
+      });
+      if (approver?.department_id == null) return [];
+      departmentFilter = { user: { department_id: approver.department_id } };
+    }
+
     return ctx.db.leaveRequest.findMany({
       where: {
         status: "pending",
+        ...departmentFilter,
       },
       include: {
         user: true,
@@ -150,7 +163,8 @@ export const leaveRouter = createTRPCRouter({
     }),
 
   // Update status (Approve/Reject)
-  updateStatus: protectedProcedure
+  // hradmin/superadmin ทำได้ทุกกลุ่มงาน ส่วน leader ทำได้เฉพาะคำขอของผู้ใช้ในกลุ่มงานตัวเอง
+  updateStatus: roleProcedure(WFH_APPROVER_ROLES)
     .input(
       z.object({
         id: z.number(),
@@ -158,6 +172,30 @@ export const leaveRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const [approver, request] = await Promise.all([
+        ctx.db.user.findUnique({
+          where: { id: Number(ctx.session.user.id) },
+          select: { department_id: true },
+        }),
+        ctx.db.leaveRequest.findUnique({
+          where: { id: input.id },
+          select: { user: { select: { department_id: true } } },
+        }),
+      ]);
+
+      if (!request) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบคำขอลา" });
+      }
+
+      const allowed = canApproveDepartmentRequest({
+        approverRoles: ctx.session.user.roles,
+        approverDepartmentId: approver?.department_id,
+        requesterDepartmentId: request.user?.department_id,
+      });
+      if (!allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "ไม่สามารถอนุมัติคำขอลาของกลุ่มงานอื่นได้" });
+      }
+
       return ctx.db.leaveRequest.update({
         where: { id: input.id },
         data: { status: input.status },

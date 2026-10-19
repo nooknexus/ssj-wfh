@@ -122,3 +122,19 @@ export const getRoleSummary = (roles?: readonly string[]): { label: string; full
     full: getRoleLabels(normalized).join(", "),
   };
 };
+
+type DepartmentApprovalInput = {
+  approverRoles: readonly string[];
+  approverDepartmentId: number | null | undefined;
+  requesterDepartmentId: number | null | undefined;
+};
+
+/**
+ * ตรวจว่าผู้อนุมัติจัดการคำขอนี้ได้หรือไม่: hradmin/superadmin ได้ทุกกลุ่มงาน
+ * ส่วน leader ได้เฉพาะคำขอของผู้ใช้ในกลุ่มงาน (department_id) เดียวกัน
+ */
+export const canApproveDepartmentRequest = (input: DepartmentApprovalInput): boolean => {
+  if (hasAnyRole(input.approverRoles, HR_ROLES)) return true;
+  if (!hasRole(input.approverRoles, "leader")) return false;
+  return input.approverDepartmentId != null && input.approverDepartmentId === input.requesterDepartmentId;
+};

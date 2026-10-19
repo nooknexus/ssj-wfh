@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canApproveDepartmentRequest,
   getAdminNavigation,
   getPrimaryRole,
   getRoleLabel,
@@ -123,5 +124,27 @@ describe("getRoleSummary", () => {
       label: "ผู้ดูแล HR +1",
       full: "ผู้ดูแล HR, หัวหน้างาน, เจ้าหน้าที่",
     });
+  });
+});
+
+describe("canApproveDepartmentRequest", () => {
+  it("should allow hradmin and superadmin for any department", () => {
+    expect(canApproveDepartmentRequest({ approverRoles: ["hradmin"], approverDepartmentId: 1, requesterDepartmentId: 2 })).toBe(true);
+    expect(canApproveDepartmentRequest({ approverRoles: ["superadmin"], approverDepartmentId: null, requesterDepartmentId: null })).toBe(true);
+  });
+
+  it("should allow leader only within the same department", () => {
+    expect(canApproveDepartmentRequest({ approverRoles: ["leader"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(true);
+    expect(canApproveDepartmentRequest({ approverRoles: ["leader"], approverDepartmentId: 3, requesterDepartmentId: 4 })).toBe(false);
+  });
+
+  it("should deny leader without a department even if requester has none", () => {
+    expect(canApproveDepartmentRequest({ approverRoles: ["leader"], approverDepartmentId: null, requesterDepartmentId: null })).toBe(false);
+    expect(canApproveDepartmentRequest({ approverRoles: ["leader"], approverDepartmentId: undefined, requesterDepartmentId: undefined })).toBe(false);
+  });
+
+  it("should deny roles that are not approvers", () => {
+    expect(canApproveDepartmentRequest({ approverRoles: ["staff"], approverDepartmentId: 1, requesterDepartmentId: 1 })).toBe(false);
+    expect(canApproveDepartmentRequest({ approverRoles: ["itadmin"], approverDepartmentId: 1, requesterDepartmentId: 1 })).toBe(false);
   });
 });

@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
+import { HR_ROLES } from "@/lib/roles";
 import { syncLeavesFromGoogleSheet } from "../services/leave-sync";
 
 export const leaveRouter = createTRPCRouter({
-  syncFromGoogleSheet: protectedProcedure.mutation(async () => {
+  syncFromGoogleSheet: roleProcedure(HR_ROLES).mutation(async () => {
     return syncLeavesFromGoogleSheet();
   }),
   // Get all leaves for the current user

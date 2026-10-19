@@ -1,4 +1,5 @@
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
+import { USER_MANAGER_ROLES } from "@/lib/roles";
 import { z } from "zod";
 
 export const departmentRouter = createTRPCRouter({
@@ -24,7 +25,7 @@ export const departmentRouter = createTRPCRouter({
     }));
   }),
 
-  create: protectedProcedure
+  create: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         name: z.string().min(1, "กรุณากรอกชื่อกลุ่มงาน"),
@@ -38,7 +39,7 @@ export const departmentRouter = createTRPCRouter({
       });
     }),
 
-  update: protectedProcedure
+  update: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         id: z.number(),
@@ -55,7 +56,7 @@ export const departmentRouter = createTRPCRouter({
       });
     }),
 
-  delete: protectedProcedure
+  delete: roleProcedure(USER_MANAGER_ROLES)
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.department.delete({

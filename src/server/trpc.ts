@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { db } from "./db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { hasAnyRole, normalizeRoles, type AppRole } from "@/lib/roles";
 
 export const createTRPCContext = async (opts: { req?: Request }) => {
   const session = await getServerSession(authOptions);
@@ -37,14 +38,26 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
   
-  const userId = Number((ctx.session.user as any).id);
+  const userId = Number(ctx.session.user.id);
   if (isNaN(userId)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid user session" });
   }
 
   return next({
     ctx: {
-      session: { ...ctx.session, user: ctx.session.user },
+      session: {
+        ...ctx.session,
+        user: { ...ctx.session.user, roles: normalizeRoles(ctx.session.user.roles) },
+      },
     },
   });
 });
+
+/** procedure ที่อนุญาตเฉพาะผู้ใช้ที่มีบทบาทอย่างน้อยหนึ่งบทบาทใน allowed */
+export const roleProcedure = (allowed: readonly AppRole[]) =>
+  protectedProcedure.use(({ ctx, next }) => {
+    if (!hasAnyRole(ctx.session.user.roles, allowed)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "ไม่มีสิทธิ์ดำเนินการนี้" });
+    }
+    return next();
+  });

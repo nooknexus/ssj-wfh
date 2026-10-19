@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
+import { HR_ROLES } from "@/lib/roles";
 import { startOfDay, endOfDay, format, addDays, isWeekend, isSameDay } from "date-fns";
 import { getThaiHolidaysForRange, isHoliday } from "../utils/holidays";
 import { sendMophAlert, getCheckInFlexMessage, getCheckOutFlexMessage } from "@/lib/moph-alert";
@@ -216,7 +217,7 @@ export const attendanceRouter = createTRPCRouter({
     }),
 
   // ดึงข้อมูลประวัติการลงเวลาสำหรับผู้ดูแลระบบ
-  getAdminRecords: protectedProcedure
+  getAdminRecords: roleProcedure(HR_ROLES)
     .input(
       z.object({
         startDate: z.date().optional(),
@@ -231,12 +232,6 @@ export const attendanceRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      // ตรวจสอบสิทธิ์
-      const role = (ctx.session.user as any).role;
-      if (role !== "hradmin" && role !== "superadmin") {
-        throw new Error("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้");
-      }
-
       const { startDate, endDate, departmentId, status, workType, limit, page, fetchAll, search } = input;
 
       if (!startDate || !endDate) {

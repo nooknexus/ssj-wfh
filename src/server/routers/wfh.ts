@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HR_ROLES, WFH_APPROVER_ROLES, hasAnyRole, hasRole } from "@/lib/roles";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const wfhRouter = createTRPCRouter({
@@ -95,10 +96,10 @@ export const wfhRouter = createTRPCRouter({
       const currentUserId = parseInt((ctx.session.user as any).id);
       const currentUser = await ctx.db.user.findUnique({
         where: { id: currentUserId },
-        select: { role: true }
+        select: { roles: { select: { role: true } } }
       });
-      
-      const isLeader = currentUser?.role === "leader";
+
+      const isLeader = hasRole(currentUser?.roles.map((item) => item.role), "leader");
 
       return ctx.db.wfhRequest.create({
         data: {
@@ -120,19 +121,21 @@ export const wfhRouter = createTRPCRouter({
     const currentUserId = parseInt((ctx.session.user as any).id);
     const currentUser = await ctx.db.user.findUnique({
       where: { id: currentUserId },
-      select: { role: true, department_id: true }
+      select: { department_id: true, roles: { select: { role: true } } }
     });
+    const roles = currentUser?.roles.map((item) => item.role);
 
-    if (!currentUser || currentUser.role !== "leader" || !currentUser.department_id) {
+    // hradmin/superadmin เห็นทุกกลุ่มงาน หัวหน้างานเห็นเฉพาะกลุ่มงานของตัวเอง
+    const seesAllDepartments = hasAnyRole(roles, HR_ROLES);
+    const isDepartmentLeader = hasRole(roles, "leader") && Boolean(currentUser?.department_id);
+    if (!currentUser || (!seesAllDepartments && !isDepartmentLeader)) {
       return [];
     }
 
     const requests = await ctx.db.wfhRequest.findMany({
-      where: {
-        user: {
-          department_id: currentUser.department_id
-        }
-      },
+      where: seesAllDepartments
+        ? undefined
+        : { user: { department_id: currentUser.department_id } },
       include: {
         user: true,
       },
@@ -161,10 +164,11 @@ export const wfhRouter = createTRPCRouter({
       const currentUserId = parseInt((ctx.session.user as any).id);
       const currentUser = await ctx.db.user.findUnique({
         where: { id: currentUserId },
-        select: { role: true, department_id: true }
+        select: { department_id: true, roles: { select: { role: true } } }
       });
+      const roles = currentUser?.roles.map((item) => item.role);
 
-      if (!currentUser || (currentUser.role !== "superadmin" && currentUser.role !== "hradmin" && currentUser.role !== "leader")) {
+      if (!currentUser || !hasAnyRole(roles, WFH_APPROVER_ROLES)) {
         throw new Error("ไม่มีสิทธิ์ในการอนุมัติ");
       }
 
@@ -178,7 +182,8 @@ export const wfhRouter = createTRPCRouter({
       }
 
       // If leader, verify department
-      if (currentUser.role === "leader" && request.user.department_id !== currentUser.department_id) {
+      // หัวหน้างาน (ที่ไม่ใช่ hradmin/superadmin) อนุมัติได้เฉพาะกลุ่มงานของตัวเอง
+      if (!hasAnyRole(roles, HR_ROLES) && request.user.department_id !== currentUser.department_id) {
         throw new Error("ไม่สามารถอนุมัติคำขอของแผนกอื่นได้");
       }
 

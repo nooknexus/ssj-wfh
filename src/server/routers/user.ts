@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { Role } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
+import { ASSIGNABLE_ROLES, USER_MANAGER_ROLES, validateRoleChange } from "@/lib/roles";
 
 export const userRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -33,8 +34,8 @@ export const userRouter = createTRPCRouter({
           position: true,
           hname: true,
           email: true,
-          role: true,
           status: true,
+          roles: { select: { role: true } },
           department_id: true,
           created_at: true,
           department: {
@@ -50,7 +51,7 @@ export const userRouter = createTRPCRouter({
         ],
       });
     }),
-  updateStatus: protectedProcedure
+  updateStatus: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         id: z.number(),
@@ -65,7 +66,7 @@ export const userRouter = createTRPCRouter({
         },
       });
     }),
-  updateDepartment: protectedProcedure
+  updateDepartment: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         userId: z.number(),
@@ -80,19 +81,36 @@ export const userRouter = createTRPCRouter({
         },
       });
     }),
-  updateRole: protectedProcedure
+  setRoles: roleProcedure(USER_MANAGER_ROLES)
     .input(
       z.object({
         userId: z.number(),
-        role: z.nativeEnum(Role),
+        roles: z.array(z.enum(ASSIGNABLE_ROLES)),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.user.update({
-        where: { id: input.userId },
-        data: {
-          role: input.role,
-        },
+      const nextRoles = [...new Set(input.roles)];
+      const [currentRoles, superadminCount] = await Promise.all([
+        ctx.db.userRole.findMany({ where: { user_id: input.userId }, select: { role: true } }),
+        ctx.db.userRole.count({ where: { role: "superadmin" } }),
+      ]);
+
+      const error = validateRoleChange({
+        actorRoles: ctx.session.user.roles,
+        targetCurrentRoles: currentRoles.map((item) => item.role),
+        nextRoles,
+        superadminCount,
       });
+      if (error) {
+        throw new TRPCError({ code: "FORBIDDEN", message: error });
+      }
+
+      await ctx.db.$transaction([
+        ctx.db.userRole.deleteMany({ where: { user_id: input.userId } }),
+        ctx.db.userRole.createMany({
+          data: nextRoles.map((role) => ({ user_id: input.userId, role })),
+        }),
+      ]);
+      return { roles: nextRoles };
     }),
 });

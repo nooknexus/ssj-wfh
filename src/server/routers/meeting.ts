@@ -87,13 +87,17 @@ export const meetingRouter = createTRPCRouter({
 
   createBooking: protectedProcedure.input(bookingInput).mutation(async ({ ctx, input }) =>
     ctx.db.$transaction(async (tx) => {
-      const link = await tx.conferenceLink.findUnique({ where: { id: input.linkId } });
+      const userId = Number(ctx.session.user.id);
+      const [link, requester] = await Promise.all([
+        tx.conferenceLink.findUnique({ where: { id: input.linkId } }),
+        tx.user.findUnique({ where: { id: userId }, select: { department_id: true } }),
+      ]);
       if (!link || !link.is_active) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบลิงก์ที่เปิดใช้งาน" });
       assertValidBooking(input, link.max_participants);
       const conflict = await tx.meetingBooking.findFirst({ where: conflictWhere(input.linkId, input.startAt, input.endAt) });
       if (conflict) throw new TRPCError({ code: "CONFLICT", message: "ลิงก์นี้ถูกจองในช่วงเวลาที่เลือกแล้ว" });
       return tx.meetingBooking.create({
-        data: { link_id: input.linkId, user_id: Number(ctx.session.user.id), title: input.title, description: input.description, start_at: input.startAt, end_at: input.endAt, attendees: input.attendees, status: "pending" },
+        data: { link_id: input.linkId, user_id: userId, department_id: requester?.department_id ?? null, title: input.title, description: input.description, start_at: input.startAt, end_at: input.endAt, attendees: input.attendees, status: "pending" },
       });
     }, { isolationLevel: "Serializable" }),
   ),
@@ -112,6 +116,9 @@ export const meetingRouter = createTRPCRouter({
   cancelBooking: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const booking = await ctx.db.meetingBooking.findFirst({ where: { id: input.id, user_id: Number(ctx.session.user.id) } });
     if (!booking) throw new TRPCError({ code: "FORBIDDEN", message: "ไม่สามารถยกเลิกรายการนี้ได้" });
+    if (booking.status !== "pending" && booking.status !== "approved") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "รายการนี้ยกเลิกไม่ได้" });
+    }
     if (booking.start_at <= new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "ยกเลิกได้ก่อนเวลาเริ่มเท่านั้น" });
     return ctx.db.meetingBooking.update({ where: { id: input.id }, data: { status: "cancelled" } });
   }),
@@ -120,7 +127,10 @@ export const meetingRouter = createTRPCRouter({
     .input(z.object({ status: statusSchema.optional(), from: z.date().optional(), to: z.date().optional() }).optional())
     .query(({ ctx, input }) => ctx.db.meetingBooking.findMany({
       where: { ...(input?.status ? { status: input.status } : {}), ...(input?.from || input?.to ? { start_at: { ...(input.from ? { gte: input.from } : {}), ...(input.to ? { lte: input.to } : {}) } } : {}) },
-      include: { user: true, link: true },
+      include: {
+        user: { select: { id: true, name_th: true, position: true, department: { select: { name: true } } } },
+        link: true,
+      },
       orderBy: { start_at: "desc" },
     })),
 
@@ -129,12 +139,17 @@ export const meetingRouter = createTRPCRouter({
     .mutation(({ ctx, input }) => ctx.db.$transaction(async (tx) => {
       const booking = await tx.meetingBooking.findUnique({ where: { id: input.id } });
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบรายการจอง" });
+      if (booking.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "รายการนี้ได้รับการพิจารณาหรือถูกยกเลิกแล้ว" });
       if (input.status === "approved") {
         const conflict = await tx.meetingBooking.findFirst({ where: conflictWhere(booking.link_id, booking.start_at, booking.end_at, booking.id) });
         if (conflict) throw new TRPCError({ code: "CONFLICT", message: "ไม่สามารถอนุมัติได้เพราะเวลาชนกับรายการอื่น" });
       }
       return tx.meetingBooking.update({ where: { id: booking.id }, data: { status: input.status, approved_by: Number(ctx.session.user.id), approved_at: new Date(), reject_reason: input.status === "rejected" ? input.rejectReason : null } });
     }, { isolationLevel: "Serializable" })),
+
+  // จำนวนการจองที่รออนุมัติ สำหรับตัวเลขบนเมนูผู้ดูแล
+  pendingCount: roleProcedure(CONFERENCE_ADMIN_ROLES).query(({ ctx }) =>
+    ctx.db.meetingBooking.count({ where: { status: "pending" } })),
 
   listLinks: roleProcedure(CONFERENCE_ADMIN_ROLES).query(({ ctx }) =>
     ctx.db.conferenceLink.findMany({ orderBy: [{ sort_order: "asc" }, { name: "asc" }] })),

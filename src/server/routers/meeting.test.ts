@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { meetingRouter } from "./meeting";
 
-const at = (value: string) => new Date(`2026-10-21T${value}:00.000Z`);
+const at = (value: string) => new Date(`2099-10-21T${value}:00.000Z`);
 
 const createCaller = (roles: string[], db: Record<string, unknown>) =>
   meetingRouter.createCaller({
@@ -61,6 +61,7 @@ describe("meetingRouter conflicts", () => {
   it("refuses a pending booking that overlaps a pending reservation", async () => {
     const transaction = {
       conferenceLink: { findUnique: vi.fn().mockResolvedValue({ id: 2, is_active: true, max_participants: 100 }) },
+      user: { findUnique: vi.fn().mockResolvedValue({ department_id: 3 }) },
       meetingBooking: { findFirst: vi.fn().mockResolvedValue({ id: 99 }) },
     };
     const caller = createCaller(["staff"], { $transaction: vi.fn((callback) => callback(transaction)) });
@@ -78,5 +79,36 @@ describe("meetingRouter conflicts", () => {
     const caller = createCaller(["itadmin"], { $transaction: vi.fn((callback) => callback(transaction)) });
 
     await expect(caller.updateBookingStatus({ id: 5, status: "approved" })).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+});
+
+describe("meetingRouter status guards", () => {
+  it("refuses to approve a booking that is no longer pending", async () => {
+    const transaction = { meetingBooking: { findUnique: vi.fn().mockResolvedValue(booking("cancelled")) } };
+    const caller = createCaller(["itadmin"], { $transaction: vi.fn((callback) => callback(transaction)) });
+
+    await expect(caller.updateBookingStatus({ id: 5, status: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("refuses to cancel a rejected booking", async () => {
+    const caller = createCaller(["staff"], {
+      meetingBooking: { findFirst: vi.fn().mockResolvedValue(booking("rejected")) },
+    });
+
+    await expect(caller.cancelBooking({ id: 5 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("stores the requester department on new bookings", async () => {
+    const create = vi.fn().mockResolvedValue({ id: 10 });
+    const transaction = {
+      conferenceLink: { findUnique: vi.fn().mockResolvedValue({ id: 2, is_active: true, max_participants: 100 }) },
+      user: { findUnique: vi.fn().mockResolvedValue({ department_id: 3 }) },
+      meetingBooking: { findFirst: vi.fn().mockResolvedValue(null), create },
+    };
+    const caller = createCaller(["staff"], { $transaction: vi.fn((callback) => callback(transaction)) });
+
+    await caller.createBooking({ linkId: 2, title: "ประชุม", startAt: at("10:00"), endAt: at("11:00"), attendees: 10 });
+
+    expect(create.mock.calls[0][0].data).toMatchObject({ user_id: 1, department_id: 3, status: "pending" });
   });
 });

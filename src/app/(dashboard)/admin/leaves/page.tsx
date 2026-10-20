@@ -24,9 +24,9 @@ export default function AllLeavesPage() {
     onSuccess: (data) => {
       setIsSyncing(false);
       Swal.fire({
-        title: "Sync สำเร็จ",
+        title: data.failedCount ? "Sync เสร็จ แต่มีรายการผิดพลาด" : "Sync สำเร็จ",
         text: `อ่านจากระบบลา ${data.fetchedCount} รายการ: เพิ่มใหม่ ${data.createdCount} อัปเดต ${data.updatedCount} ข้าม ${data.skippedCount}${data.failedCount ? ` ผิดพลาด ${data.failedCount}` : ""} รายการ`,
-        icon: "success"
+        icon: data.failedCount ? "warning" : "success"
       });
       utils.leave.getAllLeaves.invalidate();
     },

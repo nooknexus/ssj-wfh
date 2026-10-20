@@ -13,6 +13,8 @@
 - **hradmin จัดการผู้ใช้งานและกลุ่มงานได้**: เข้าเมนู "จัดการผู้ใช้งาน" และ "จัดการกลุ่มงาน" ได้ กำหนดบทบาทได้เฉพาะ "ผู้ดูแล HR" และ "หัวหน้างาน" (ให้หรือถอด "ผู้ดูแล IT" / "ผู้ดูแลระบบสูงสุด" ไม่ได้ และแก้สถานะบัญชีของผู้ใช้ที่มีบทบาทนั้นไม่ได้)
 - ตั้งค่า "เวลาเริ่มงานช่วงบ่าย" (`afternoon_start_time`) ในหน้าตั้งค่าระบบ
 
+- **Sync ใบลาจาก MySQL ของระบบลาแทน Google Sheet**: ปุ่ม "Sync ข้อมูลจากระบบลา" ในหน้า `/admin/leaves` ดึงจากตาราง `leave_requests` + `leave_types` ของระบบลาโดยตรง ตั้งค่าใน `.env` (`LEAVE_DB_HOST`, `LEAVE_DB_PORT`, `LEAVE_DB_USER`, `LEAVE_DB_PASSWORD`, `LEAVE_DB_NAME`, `LEAVE_DB_LEAVE_TYPE_NAME_COLUMN`, `LEAVE_SYNC_DAYS_BACK`) และรองรับสถานะ "ยกเลิก"
+
 ### 🛡️ ความปลอดภัย
 - เพิ่ม `roleProcedure` ตรวจบทบาทฝั่ง server ให้กับ procedure ฝั่ง admin (จัดการผู้ใช้, กลุ่มงาน, ตั้งค่าระบบ, Sync ข้อมูลลา) ก่อนหน้านี้ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกได้
 - `systemSetting.update` validate input ด้วย Zod แทน `z.any()`
@@ -21,6 +23,7 @@
 ### 🗄️ Migration
 - รัน `prisma/migrations/20261019_multi_roles/migration.sql` ก่อน deploy (สร้างตาราง `user_roles` และคัดลอกบทบาทเดิม)
 - รัน `prisma/migrations/20261020_attendance_exceptions/migration.sql` (สร้างตาราง `attendance_exceptions`)
+- รัน `prisma/migrations/20261020_leave_mysql_source/migration.sql` (เพิ่มคอลัมน์ `source`, `source_record_id` และสถานะ `cancelled` ใน `leave_requests`)
 
 ## [0.4.0] - 2026-05-01
 

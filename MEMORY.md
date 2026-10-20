@@ -21,7 +21,8 @@
    - ประเภทการทำงาน: สำนักงาน (Office), ทำงานที่บ้าน (WFH), ไปราชการ (Official Trip), ลงพื้นที่ (Onsite)
    - ผูกกับระบบแผนงานรายสัปดาห์ (Weekly Plan) เพื่อ Suggestion ข้อมูลเวลาลงเวลาออกงาน
 2. **Leave Management (ระบบการลา)**
-   - ดึงโควต้าการลาจาก Google Sheets (`sync-sheet`)
+   - Sync ใบลาจาก MySQL ของระบบลา (อีกเครื่อง) ผ่านปุ่มในหน้า `/admin/leaves` ตั้งค่าการเชื่อมต่อด้วย `LEAVE_DB_*` ใน `.env` (เลิกใช้ Google Sheet แล้ว)
+   - กันข้อมูลซ้ำด้วย `leave_requests.source = "leave_mysql"` + `source_record_id` (id ของแถวต้นทาง) logic แปลงข้อมูลอยู่ที่ `src/lib/leave-source.ts`
    - นำโควต้ามาคำนวณและแสดงผลในระบบ
 3. **Meeting Booking (ระบบจองห้องประชุม)**
    - จัดการข้อมูลห้องประชุมและอนุมัติการจอง

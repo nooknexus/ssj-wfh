@@ -20,12 +20,12 @@ export default function AllLeavesPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const utils = trpc.useUtils();
 
-  const syncMutation = trpc.leave.syncFromGoogleSheet.useMutation({
+  const syncMutation = trpc.leave.syncFromSource.useMutation({
     onSuccess: (data) => {
       setIsSyncing(false);
       Swal.fire({
         title: "Sync สำเร็จ",
-        text: `ดึงข้อมูลใบลาใหม่สำเร็จ ${data.successCount} รายการ (ข้าม ${data.skippedCount} รายการ)`,
+        text: `อ่านจากระบบลา ${data.fetchedCount} รายการ: เพิ่มใหม่ ${data.createdCount} อัปเดต ${data.updatedCount} ข้าม ${data.skippedCount}${data.failedCount ? ` ผิดพลาด ${data.failedCount}` : ""} รายการ`,
         icon: "success"
       });
       utils.leave.getAllLeaves.invalidate();
@@ -57,6 +57,10 @@ export default function AllLeavesPage() {
         return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0">อนุมัติแล้ว</Badge>;
       case "rejected":
         return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-0">ไม่อนุมัติ</Badge>;
+      case "cancelled":
+        return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100 border-0">ยกเลิก</Badge>;
+      case "step1_approved":
+        return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100 border-0">ผ่านขั้นที่ 1</Badge>;
       default:
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0">รออนุมัติ</Badge>;
     }
@@ -72,7 +76,7 @@ export default function AllLeavesPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">รายการลาทั้งหมด (Synced)</h1>
-          <p className="text-slate-500 mt-1">ข้อมูลการลาทั้งหมดที่ซิงค์มาจาก Google Sheet</p>
+          <p className="text-slate-500 mt-1">ข้อมูลการลาทั้งหมดที่ซิงค์มาจากระบบลา (MySQL)</p>
         </div>
         <Button 
           className="bg-amber-600 hover:bg-amber-700 gap-2 shadow-sm"
@@ -80,7 +84,7 @@ export default function AllLeavesPage() {
           disabled={isSyncing}
         >
           <RefreshCcw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`}/>
-          {isSyncing ? "กำลัง Sync..." : "Sync ข้อมูลจาก Google Sheet"}
+          {isSyncing ? "กำลัง Sync..." : "Sync ข้อมูลจากระบบลา"}
         </Button>
       </div>
 

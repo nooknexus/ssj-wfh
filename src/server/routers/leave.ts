@@ -2,11 +2,12 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
 import { canApproveDepartmentRequest, hasAnyRole, HR_ROLES, WFH_APPROVER_ROLES } from "@/lib/roles";
-import { syncLeavesFromGoogleSheet } from "../services/leave-sync";
+import { syncLeavesFromSource } from "../services/leave-sync";
 
 export const leaveRouter = createTRPCRouter({
-  syncFromGoogleSheet: roleProcedure(HR_ROLES).mutation(async () => {
-    return syncLeavesFromGoogleSheet();
+  // ดึงใบลาจาก MySQL ของระบบลา (ตั้งค่าการเชื่อมต่อใน .env: LEAVE_DB_*)
+  syncFromSource: roleProcedure(HR_ROLES).mutation(async () => {
+    return syncLeavesFromSource();
   }),
   // Get all leaves for the current user
   getUserLeaves: protectedProcedure.query(async ({ ctx }) => {

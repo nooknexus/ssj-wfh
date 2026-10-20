@@ -51,13 +51,13 @@
 - สร้าง: `src/lib/conference-booking.test.ts`
 
 **ส่วนเชื่อมต่อ:**
-- ส่งมอบ `intervalsOverlap`, `blocksAvailability`, `validateBookingRequest`, `getHalfHourSlots` และ type สำหรับช่วงเวลา/ข้อมูลนำเข้าที่งานที่ 3 ใช้
+- ส่งมอบ `intervalsOverlap`, `blocksAvailability`, `getLinkAvailability`, `validateBookingRequest`, `getHalfHourSlots` และ type สำหรับช่วงเวลา/ข้อมูลนำเข้าที่งานที่ 3–4 ใช้
 
-- [ ] **ขั้นที่ 1:** เขียน Vitest ที่ล้มเหลวสำหรับเวลาทับบางส่วน/ครอบทั้งช่วง/ติดกัน สถานะที่กันเวลา วันเวลาหรือระยะเวลาที่ไม่ถูกต้อง ความจุ และช่วงเวลา 07:00–20:00 ทุก 30 นาที
-- [ ] **ขั้นที่ 2:** รัน `npm test -- src/lib/conference-booking.test.ts`; **ผลที่คาดหวัง:** ล้มเหลวเพราะยังไม่มีโมดูล
-- [ ] **ขั้นที่ 3:** เขียนเฉพาะ domain function ที่ test ต้องใช้
-- [ ] **ขั้นที่ 4:** รัน focused test ซ้ำ ผลที่คาดหวัง: ผ่านทั้งหมด แล้ว refactor เฉพาะชื่อ/type ขณะยังเขียว
-- [ ] **ขั้นที่ 5:** Commit `feat(meeting): add conference booking rules`
+- [x] **ขั้นที่ 1:** เขียน Vitest ที่ล้มเหลวสำหรับเวลาทับบางส่วน/ครอบทั้งช่วง/ติดกัน สถานะที่กันเวลา วันเวลาหรือระยะเวลาที่ไม่ถูกต้อง ความจุ และช่วงเวลา 07:00–20:00 ทุก 30 นาที
+- [x] **ขั้นที่ 2:** รัน `npm test -- src/lib/conference-booking.test.ts`; **ผลที่คาดหวัง:** ล้มเหลวเพราะยังไม่มีโมดูล
+- [x] **ขั้นที่ 3:** เขียนเฉพาะ domain function ที่ test ต้องใช้
+- [x] **ขั้นที่ 4:** รัน focused test ซ้ำ ผลที่คาดหวัง: ผ่านทั้งหมด แล้ว refactor เฉพาะชื่อ/type ขณะยังเขียว
+- [x] **ขั้นที่ 5:** Commit `feat(meeting): add conference booking rules`
 
 ### Task 3: สร้าง tRPC API ที่มีการตรวจสิทธิ์
 

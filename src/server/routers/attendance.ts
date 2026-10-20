@@ -14,6 +14,8 @@ import {
   resolveExceptionStatus,
 } from "@/lib/attendance-exception";
 import { findApprovedExceptionForDay } from "../services/attendance-exception";
+import { buildMonthlyAttendanceReport } from "../services/monthly-attendance-report";
+import { parseReportMonth } from "@/lib/attendance-report";
 
 const getTimeSetting = async (db: Pick<PrismaClient, "systemSetting">, key: string, fallback: string) =>
   (await db.systemSetting.findUnique({ where: { setting_key: key } }))?.setting_value || fallback;
@@ -507,5 +509,28 @@ export const attendanceRouter = createTRPCRouter({
       const paginatedItems = fetchAll ? filteredResults : filteredResults.slice(startIndex, startIndex + limit);
 
       return { items: paginatedItems, totalItems, totalPages, page };
+    }),
+
+  // แบบรายงานการลงเวลาปฏิบัติราชการของเจ้าหน้าที่ (รายเดือน รายกลุ่มงาน) สำหรับหน้าพิมพ์ PDF
+  getMonthlyReport: roleProcedure(ATTENDANCE_REPORT_ROLES)
+    .input(z.object({ month: z.string(), departmentId: z.number().int().positive().optional() }))
+    .query(async ({ ctx, input }) => {
+      const month = parseReportMonth(input.month);
+      if (!month) throw new TRPCError({ code: "BAD_REQUEST", message: "รูปแบบเดือนไม่ถูกต้อง" });
+
+      // หัวหน้างานถูกบังคับให้เห็นเฉพาะกลุ่มงานตัวเอง ไม่ว่าจะส่ง departmentId อะไรมา
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: Number(ctx.session.user.id) },
+        select: { department_id: true },
+      });
+      const scope = resolveAttendanceReportScope({
+        roles: ctx.session.user.roles,
+        ownDepartmentId: currentUser?.department_id,
+        requestedDepartmentId: input.departmentId,
+      });
+      if ("error" in scope) throw new TRPCError({ code: "FORBIDDEN", message: scope.error });
+      if (!scope.departmentId) throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาเลือกกลุ่มงาน" });
+
+      return buildMonthlyAttendanceReport(ctx.db, { ...month, departmentId: scope.departmentId });
     }),
 });

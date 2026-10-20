@@ -9,7 +9,8 @@ import { CheckCircle2, Search, ShieldCheck, UserPlus, UserX, UserCheck } from "l
 import { Input } from "@/components/ui/input";
 import Swal from "sweetalert2";
 import { trpc } from "@/trpc/client";
-import { ROLE_LABELS, normalizeRoles, type AssignableRole } from "@/lib/roles";
+import { useSession } from "next-auth/react";
+import { ROLE_LABELS, canManageAccount, normalizeRoles, type AssignableRole } from "@/lib/roles";
 import { RoleEditorDialog } from "@/components/admin/role-editor-dialog";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +50,8 @@ const STATUS_LABELS: Record<UserRow["status"], string> = {
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const { data: session } = useSession();
+  const actorRoles = session?.user?.roles ?? [];
   const utils = trpc.useUtils();
   
   const { data: users, isLoading } = trpc.user.getAll.useQuery(
@@ -250,7 +253,7 @@ export default function AdminUsersPage() {
                             variant="outline"
                             className="h-8 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
                             onClick={() => handleApprove(user)}
-                            disabled={updateStatus.isPending}
+                            disabled={updateStatus.isPending || !canManageAccount(actorRoles, user.roles.map((item) => item.role))}
                           >
                             <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                             อนุมัติ
@@ -263,7 +266,7 @@ export default function AdminUsersPage() {
                             variant="outline"
                             className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
                             onClick={() => handleApprove(user)}
-                            disabled={updateStatus.isPending}
+                            disabled={updateStatus.isPending || !canManageAccount(actorRoles, user.roles.map((item) => item.role))}
                           >
                             <UserCheck className="mr-1.5 h-3.5 w-3.5" />
                             เปิดใช้งาน
@@ -276,7 +279,7 @@ export default function AdminUsersPage() {
                             variant="outline"
                             className="h-8 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                             onClick={() => handleDeactivate(user)}
-                            disabled={updateStatus.isPending}
+                            disabled={updateStatus.isPending || !canManageAccount(actorRoles, user.roles.map((item) => item.role))}
                           >
                             <UserX className="mr-1.5 h-3.5 w-3.5" />
                             ปิดใช้งาน

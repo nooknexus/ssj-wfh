@@ -10,7 +10,7 @@ export default async function UserManagerLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  // เมนูนี้สำหรับผู้ดูแลระบบสูงสุด/ผู้ดูแล IT เท่านั้น
+  // เมนูนี้สำหรับผู้ดูแลระบบสูงสุด / ผู้ดูแล IT / ผู้ดูแล HR
   if (!hasAnyRole(session?.user?.roles, USER_MANAGER_ROLES)) {
     redirect("/");
   }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   canApproveDepartmentRequest,
+  canManageAccount,
   canApproveWfhRequest,
   getAdminNavigation,
+  getGrantableRoles,
   getPrimaryRole,
   getRoleLabel,
   getRoleLabels,
@@ -77,7 +79,7 @@ describe("validateRoleChange", () => {
   const base = { targetCurrentRoles: ["staff"], nextRoles: [], superadminCount: 2 } as const;
 
   it("should reject actors without user-manager role", () => {
-    expect(validateRoleChange({ ...base, actorRoles: ["hradmin"], nextRoles: ["leader"] })).not.toBeNull();
+    expect(validateRoleChange({ ...base, actorRoles: ["leader"], nextRoles: ["leader"] })).not.toBeNull();
   });
 
   it("should allow itadmin to assign non-superadmin roles", () => {
@@ -169,5 +171,54 @@ describe("canApproveWfhRequest", () => {
   it("should allow hradmin who is also leader of the same department", () => {
     expect(canApproveWfhRequest({ approverRoles: ["hradmin", "leader"], approverDepartmentId: 3, requesterDepartmentId: 3 })).toBe(true);
     expect(canApproveWfhRequest({ approverRoles: ["hradmin", "leader"], approverDepartmentId: 3, requesterDepartmentId: 4 })).toBe(false);
+  });
+});
+
+describe("hradmin user management", () => {
+  const base = { targetCurrentRoles: ["staff"], nextRoles: [], superadminCount: 2 } as const;
+
+  it("should let hradmin assign hradmin and leader", () => {
+    expect(validateRoleChange({ ...base, actorRoles: ["hradmin"], nextRoles: ["leader", "hradmin"] })).toBeNull();
+  });
+
+  it("should forbid hradmin from granting or revoking itadmin and superadmin", () => {
+    expect(validateRoleChange({ ...base, actorRoles: ["hradmin"], nextRoles: ["itadmin"] })).not.toBeNull();
+    expect(validateRoleChange({ ...base, actorRoles: ["hradmin"], nextRoles: ["superadmin"] })).not.toBeNull();
+    expect(
+      validateRoleChange({ ...base, actorRoles: ["hradmin"], targetCurrentRoles: ["itadmin"], nextRoles: [] }),
+    ).not.toBeNull();
+  });
+
+  it("should let hradmin change other roles while keeping itadmin unchanged", () => {
+    expect(
+      validateRoleChange({ ...base, actorRoles: ["hradmin"], targetCurrentRoles: ["itadmin"], nextRoles: ["itadmin", "leader"] }),
+    ).toBeNull();
+  });
+
+  it("should still let itadmin grant itadmin", () => {
+    expect(validateRoleChange({ ...base, actorRoles: ["itadmin"], nextRoles: ["itadmin"] })).toBeNull();
+  });
+
+  it("should list grantable roles per actor", () => {
+    expect(getGrantableRoles(["hradmin"])).toEqual(["hradmin", "leader"]);
+    expect(getGrantableRoles(["itadmin"])).toEqual(["itadmin", "hradmin", "leader"]);
+    expect(getGrantableRoles(["superadmin"])).toHaveLength(4);
+    expect(getGrantableRoles(["leader"])).toEqual([]);
+  });
+
+  it("should block hradmin from managing accounts with privileged roles", () => {
+    expect(canManageAccount(["hradmin"], ["leader"])).toBe(true);
+    expect(canManageAccount(["hradmin"], ["itadmin"])).toBe(false);
+    expect(canManageAccount(["hradmin"], ["superadmin"])).toBe(false);
+    expect(canManageAccount(["itadmin"], ["itadmin"])).toBe(true);
+    expect(canManageAccount(["itadmin"], ["superadmin"])).toBe(false);
+    expect(canManageAccount(["leader"], ["staff"])).toBe(false);
+  });
+
+  it("should show user and department menus to hradmin", () => {
+    const hrefs = getAdminNavigation(["hradmin"]).map((item) => item.href);
+    expect(hrefs).toContain("/admin/users");
+    expect(hrefs).toContain("/admin/departments");
+    expect(hrefs).not.toContain("/admin/settings");
   });
 });

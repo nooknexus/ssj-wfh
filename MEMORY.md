@@ -49,7 +49,8 @@
    - Session ใช้ `session.user.roles: AppRole[]` (มี `staff` เสมอ) ห้ามเช็คด้วย `role === "..."` ให้ใช้ `hasRole` / `hasAnyRole` จาก `src/lib/roles.ts`
    - ฝั่ง server ใช้ `roleProcedure([...])` ใน `src/server/trpc.ts` สำหรับ procedure ที่ต้องการสิทธิ์ และหน้า `/admin/*` มี guard ใน `admin/layout.tsx`
    - `leader` ผูกกับ `users.department_id` (อนุมัติได้เฉพาะกลุ่มงานตัวเอง) ส่วน `hradmin`/`superadmin` เห็นคำขอ WFH ทุกกลุ่มงาน
-   - กำหนดบทบาทได้โดย itadmin/superadmin เท่านั้น และเฉพาะ superadmin ที่ให้/ถอด superadmin ได้
+   - จัดการผู้ใช้งาน/กลุ่มงานได้โดย superadmin, itadmin และ hradmin (`USER_MANAGER_ROLES`) ส่วนตั้งค่าระบบเฉพาะ superadmin/itadmin (`SYSTEM_ADMIN_ROLES`)
+   - บทบาทที่ให้ได้ดูจาก `getGrantableRoles`: superadmin ให้ได้ทุกบทบาท, itadmin ให้ได้ทุกบทบาทยกเว้น superadmin, hradmin ให้ได้เฉพาะ hradmin/leader และแก้สถานะบัญชีของ superadmin/itadmin ไม่ได้ (`canManageAccount`)
 7. **ข้อยกเว้นการลงเวลา (ลา / ไปราชการจากแผนงาน)**
    - ตาราง `attendance_exceptions` แยกจาก `leave_requests` โดยสิ้นเชิง (ยังไม่เชื่อมกับระบบลา) 1 แถวต่อ 1 วัน ช่วงเวลา `full | morning | afternoon` ครึ่งเช้า + ครึ่งบ่ายที่อนุมัติแล้วนับเป็นเต็มวัน
    - ผู้อนุมัติ = leader ของกลุ่มงานเดียวกับผู้ยื่น (`canApproveDepartmentLeaderRequest` ใน `src/lib/roles.ts`) leader ยื่นเองอนุมัติอัตโนมัติ

@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure, roleProcedure } from "../trpc";
-import { USER_MANAGER_ROLES } from "@/lib/roles";
+import { SYSTEM_ADMIN_ROLES } from "@/lib/roles";
 import { z } from "zod";
 import { APP_CONFIG } from "@/lib/constants";
 
@@ -54,7 +54,7 @@ export const systemSettingRouter = createTRPCRouter({
     return { ...defaults, ...settingsMap };
   }),
 
-  update: roleProcedure(USER_MANAGER_ROLES)
+  update: roleProcedure(SYSTEM_ADMIN_ROLES)
     .input(z.object({ settings: z.record(z.string(), z.string()) }))
     .mutation(async ({ ctx, input }) => {
       const { settings } = input;

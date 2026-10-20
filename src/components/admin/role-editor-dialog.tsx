@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { trpc } from "@/trpc/client";
-import { ASSIGNABLE_ROLES, ROLE_LABELS, type AssignableRole } from "@/lib/roles";
+import { useSession } from "next-auth/react";
+import { ASSIGNABLE_ROLES, ROLE_LABELS, getGrantableRoles, type AssignableRole } from "@/lib/roles";
 
 type RoleEditorDialogProps = {
   userId: number;
@@ -31,6 +32,8 @@ const toggleRole = (roles: AssignableRole[], role: AssignableRole): AssignableRo
 export const RoleEditorDialog = ({ userId, userName, currentRoles, open, onOpenChange }: RoleEditorDialogProps) => {
   const [selected, setSelected] = useState<AssignableRole[]>(currentRoles);
   const utils = trpc.useUtils();
+  const { data: session } = useSession();
+  const grantable = getGrantableRoles(session?.user?.roles);
 
   const setRoles = trpc.user.setRoles.useMutation({
     onSuccess: async () => {
@@ -59,6 +62,8 @@ export const RoleEditorDialog = ({ userId, userName, currentRoles, open, onOpenC
               id={`role-${userId}-${role}`}
               label={ROLE_LABELS[role]}
               checked={selected.includes(role)}
+              disabled={!grantable.includes(role)}
+              hint={grantable.includes(role) ? undefined : "ท่านไม่มีสิทธิ์กำหนดบทบาทนี้"}
               onToggle={() => setSelected((prev) => toggleRole(prev, role))}
             />
           ))}

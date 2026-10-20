@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
-import { ASSIGNABLE_ROLES, USER_MANAGER_ROLES, validateRoleChange } from "@/lib/roles";
+import { ASSIGNABLE_ROLES, USER_MANAGER_ROLES, canManageAccount, validateRoleChange } from "@/lib/roles";
 
 export const userRouter = createTRPCRouter({
   // รายชื่อผู้ใช้แบบเต็ม (รวม email/roles) สำหรับหน้าจัดการผู้ใช้งาน
@@ -75,6 +75,11 @@ export const userRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // hradmin แก้สถานะบัญชีของผู้ดูแลระบบสูงสุด/ผู้ดูแล IT ไม่ได้
+      const targetRoles = await ctx.db.userRole.findMany({ where: { user_id: input.id }, select: { role: true } });
+      if (!canManageAccount(ctx.session.user.roles, targetRoles.map((item) => item.role))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "ไม่มีสิทธิ์แก้สถานะบัญชีของผู้ดูแลระบบ" });
+      }
       return ctx.db.user.update({
         where: { id: input.id },
         data: {

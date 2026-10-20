@@ -20,7 +20,12 @@ export const ROLE_PRIORITY: AppRole[] = ["superadmin", "itadmin", "hradmin", "le
 export const ASSIGNABLE_ROLES: AssignableRole[] = ["superadmin", "itadmin", "hradmin", "leader"];
 
 export const ADMIN_ROLES: AppRole[] = ["superadmin", "itadmin", "hradmin"];
-export const USER_MANAGER_ROLES: AppRole[] = ["superadmin", "itadmin"];
+/** จัดการผู้ใช้งานและกลุ่มงานได้ (hradmin กำหนดบทบาทได้จำกัด ดู getGrantableRoles) */
+export const USER_MANAGER_ROLES: AppRole[] = ["superadmin", "itadmin", "hradmin"];
+/** ตั้งค่าระบบได้ */
+export const SYSTEM_ADMIN_ROLES: AppRole[] = ["superadmin", "itadmin"];
+/** บทบาทผู้ดูแลระบบที่ hradmin ให้ ถอด หรือแก้สถานะบัญชีไม่ได้ */
+export const PRIVILEGED_ROLES: AssignableRole[] = ["superadmin", "itadmin"];
 export const HR_ROLES: AppRole[] = ["superadmin", "hradmin"];
 export const WFH_APPROVER_ROLES: AppRole[] = ["superadmin", "hradmin", "leader"];
 
@@ -41,6 +46,8 @@ export const ADMIN_NAV_BY_ROLE: Partial<Record<AppRole, AdminNavItem[]>> = {
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: "settings" },
   ],
   hradmin: [
+    { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: "users" },
+    { name: "จัดการกลุ่มงาน", href: "/admin/departments", icon: "building2" },
     { name: "รายการลงเวลา", href: "/admin/attendance", icon: "clock" },
     { name: "รายการลาทั้งหมด", href: "/admin/leaves", icon: "fileText" },
   ],
@@ -95,6 +102,24 @@ type RoleChangeInput = {
   superadminCount: number;
 };
 
+/**
+ * บทบาทที่ผู้ใช้คนนี้ให้หรือถอดได้
+ * superadmin: ทุกบทบาท  itadmin: ทุกบทบาทยกเว้น superadmin  hradmin: เฉพาะ hradmin และ leader
+ */
+export const getGrantableRoles = (actorRoles?: readonly string[]): AssignableRole[] => {
+  if (hasRole(actorRoles, "superadmin")) return [...ASSIGNABLE_ROLES];
+  if (hasRole(actorRoles, "itadmin")) return ASSIGNABLE_ROLES.filter((role) => role !== "superadmin");
+  if (hasRole(actorRoles, "hradmin")) return ASSIGNABLE_ROLES.filter((role) => !PRIVILEGED_ROLES.includes(role));
+  return [];
+};
+
+/** แก้สถานะบัญชีได้หรือไม่: ทุกบทบาทผู้ดูแลระบบที่เป้าหมายมี ต้องเป็นบทบาทที่ผู้แก้ให้ได้ */
+export const canManageAccount = (actorRoles: readonly string[], targetRoles: readonly string[]): boolean => {
+  if (!hasAnyRole(actorRoles, USER_MANAGER_ROLES)) return false;
+  const grantable = getGrantableRoles(actorRoles);
+  return PRIVILEGED_ROLES.every((role) => !hasRole(targetRoles, role) || grantable.includes(role));
+};
+
 /** ตรวจกฎการเปลี่ยนบทบาท คืนข้อความผิดพลาด หรือ null ถ้าเปลี่ยนได้ */
 export const validateRoleChange = (input: RoleChangeInput): string | null => {
   if (!hasAnyRole(input.actorRoles, USER_MANAGER_ROLES)) {
@@ -105,6 +130,10 @@ export const validateRoleChange = (input: RoleChangeInput): string | null => {
   const touchesSuperadmin = hadSuperadmin !== willHaveSuperadmin;
   if (touchesSuperadmin && !hasRole(input.actorRoles, "superadmin")) {
     return "เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่กำหนดบทบาทผู้ดูแลระบบสูงสุดได้";
+  }
+  const touchesItadmin = hasRole(input.targetCurrentRoles, "itadmin") !== input.nextRoles.includes("itadmin");
+  if (touchesItadmin && !getGrantableRoles(input.actorRoles).includes("itadmin")) {
+    return "เฉพาะผู้ดูแลระบบสูงสุดหรือผู้ดูแล IT เท่านั้นที่กำหนดบทบาทผู้ดูแล IT ได้";
   }
   if (hadSuperadmin && !willHaveSuperadmin && input.superadminCount <= 1) {
     return "ไม่สามารถถอดบทบาทผู้ดูแลระบบสูงสุดคนสุดท้ายได้";

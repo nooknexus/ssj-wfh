@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { hasAnyRole, USER_MANAGER_ROLES } from "@/lib/roles";
+import { hasAnyRole, SYSTEM_ADMIN_ROLES } from "@/lib/roles";
 
 export default async function UserManagerLayout({
   children,
@@ -11,7 +11,7 @@ export default async function UserManagerLayout({
   const session = await getServerSession(authOptions);
 
   // เมนูนี้สำหรับผู้ดูแลระบบสูงสุด/ผู้ดูแล IT เท่านั้น
-  if (!hasAnyRole(session?.user?.roles, USER_MANAGER_ROLES)) {
+  if (!hasAnyRole(session?.user?.roles, SYSTEM_ADMIN_ROLES)) {
     redirect("/");
   }
 

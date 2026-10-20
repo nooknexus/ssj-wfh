@@ -6,9 +6,9 @@ import { findApprovedExceptionForDay } from "@/server/services/attendance-except
 
 // API สำหรับให้ Cron Job ภายนอกยิงเข้ามา (เช่น ตั้งเวลา 17:00 น. ของทุกวันทำการ)
 export async function GET(request: Request) {
-  // ตรวจสอบ Authorization Token (ควรมีเพื่อความปลอดภัย)
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // ตรวจสอบ Authorization Token: ถ้ายังไม่ได้ตั้ง CRON_SECRET ให้ปฏิเสธทุกคำขอ (กันกรณี "Bearer undefined")
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -33,6 +33,7 @@ enum LeaveStatus {
   step1_approved
   approved
   rejected
+  cancelled
 }
 
 enum RoomStatus {
@@ -223,9 +224,14 @@ model LeaveRequest {
 
   status LeaveStatus @default(pending)
 
+  /// แหล่งข้อมูลที่ Sync มา เช่น "leave_mysql" และ id ของแถวในระบบต้นทาง ใช้กันข้อมูลซ้ำ
+  source           String? @db.VarChar(30)
+  source_record_id String? @db.VarChar(64)
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@unique([source, source_record_id])
   @@map("leave_requests")
 }
 

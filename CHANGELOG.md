@@ -16,6 +16,8 @@
 - **Sync ใบลาจาก MySQL ของระบบลาแทน Google Sheet**: ปุ่ม "Sync ข้อมูลจากระบบลา" ในหน้า `/admin/leaves` ดึงจากตาราง `leave_requests` + `leave_types` ของระบบลาโดยตรง ตั้งค่าใน `.env` (`LEAVE_DB_HOST`, `LEAVE_DB_PORT`, `LEAVE_DB_USER`, `LEAVE_DB_PASSWORD`, `LEAVE_DB_NAME`, `LEAVE_DB_LEAVE_TYPE_NAME_COLUMN`, `LEAVE_SYNC_DAYS_BACK`) และรองรับสถานะ "ยกเลิก"
 - **Sync ใบลาอัตโนมัติ**: เพิ่ม `GET /api/cron/leave-sync` สำหรับ crontab (ดู DEPLOY.md ข้อ 7) กัน Sync ซ้อนกัน และแสดงเวลา/ผล Sync ล่าสุดในหน้า `/admin/leaves`
 
+- **ระบบจอง Web Conference**: เปลี่ยนจากระบบจองห้องประชุมเป็นการจองลิงก์ Web Conference (Zoom/Teams/Meet/Webex) เลือกวัน-เวลาแล้วระบบแสดงลิงก์ที่ว่าง กันการจองเวลาชน ผู้ดูแล IT อนุมัติและจัดการลิงก์ที่ `/admin/meeting` ผู้ใช้เห็น URL เมื่ออนุมัติแล้วเท่านั้น
+
 ### 🛡️ ความปลอดภัย
 - เพิ่ม `roleProcedure` ตรวจบทบาทฝั่ง server ให้กับ procedure ฝั่ง admin (จัดการผู้ใช้, กลุ่มงาน, ตั้งค่าระบบ, Sync ข้อมูลลา) ก่อนหน้านี้ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกได้
 - `systemSetting.update` validate input ด้วย Zod แทน `z.any()`
@@ -24,6 +26,7 @@
 ### 🗄️ Migration
 - รัน `prisma/migrations/20261019_multi_roles/migration.sql` ก่อน deploy (สร้างตาราง `user_roles` และคัดลอกบทบาทเดิม)
 - รัน `prisma/migrations/20261020_attendance_exceptions/migration.sql` (สร้างตาราง `attendance_exceptions`)
+- รัน `prisma/migrations/20261020_conference_booking/migration.sql` (แทนตาราง `meeting_rooms` ด้วย `conference_links` และสร้าง `meeting_bookings` ใหม่ ต้องไม่มีข้อมูลเดิมในสองตารางนี้ ไม่เช่นนั้น migration จะหยุด)
 - รัน `prisma/migrations/20261020_leave_mysql_source/migration.sql` (เพิ่มคอลัมน์ `source`, `source_record_id` และสถานะ `cancelled` ใน `leave_requests`)
 
 ## [0.4.0] - 2026-05-01

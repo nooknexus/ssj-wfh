@@ -26,6 +26,7 @@
    - นำโควต้ามาคำนวณและแสดงผลในระบบ
 3. **Meeting Booking (ระบบจองห้องประชุม)**
    - จัดการข้อมูลห้องประชุมและอนุมัติการจอง
+3.1 **Web Conference Booking**: จองลิงก์ (`conference_links`) ตามช่วงเวลา `meeting_bookings.start_at/end_at` (DateTime เต็ม) การจองที่ pending/approved กันช่วงเวลา กฎอยู่ที่ `src/lib/conference-booking.ts` ผู้ดูแล = `CONFERENCE_ADMIN_ROLES` (itadmin/superadmin) และ URL เปิดเผยเฉพาะการจองที่อนุมัติแล้ว
 4. **Document Tracking (ระบบติดตามเอกสาร)**
    - ติดตามสถานะเอกสาร รับ/ส่ง/สั่งการ
 

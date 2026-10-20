@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   blocksAvailability,
+  combineDateTime,
   getHalfHourSlots,
   getLinkAvailability,
   intervalsOverlap,
@@ -59,5 +60,17 @@ describe("getHalfHourSlots", () => {
     expect(slots[0]).toBe("07:00");
     expect(slots.at(-1)).toBe("20:00");
     expect(slots).toContain("12:30");
+  });
+});
+
+describe("combineDateTime", () => {
+  it("should build a local date-time", () => {
+    const value = combineDateTime("2099-10-21", "13:30");
+    expect(value && [value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes()]).toEqual([2099, 9, 21, 13, 30]);
+  });
+
+  it("should reject malformed input", () => {
+    expect(combineDateTime("21/10/2099", "13:30")).toBeNull();
+    expect(combineDateTime("2099-10-21", "1:30")).toBeNull();
   });
 });

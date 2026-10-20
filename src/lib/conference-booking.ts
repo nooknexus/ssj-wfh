@@ -55,3 +55,29 @@ export const getHalfHourSlots = (): string[] =>
     const minutes = 7 * 60 + index * 30;
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   });
+
+export type ConferencePlatform = "zoom" | "teams" | "meet" | "webex" | "other";
+
+export const CONFERENCE_PLATFORMS: ConferencePlatform[] = ["zoom", "teams", "meet", "webex", "other"];
+
+export const PLATFORM_LABELS: Record<ConferencePlatform, string> = {
+  zoom: "Zoom",
+  teams: "Microsoft Teams",
+  meet: "Google Meet",
+  webex: "Webex",
+  other: "อื่น ๆ",
+};
+
+export const BOOKING_STATUS_LABELS: Record<ConferenceBookingStatus, string> = {
+  pending: "รออนุมัติ",
+  approved: "อนุมัติแล้ว",
+  rejected: "ไม่อนุมัติ",
+  cancelled: "ยกเลิกแล้ว",
+};
+
+/** รวมวันที่ (YYYY-MM-DD) กับเวลา (HH:mm) เป็นเวลาท้องถิ่น คืน null ถ้ารูปแบบไม่ถูกต้อง */
+export const combineDateTime = (date: string, time: string): Date | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const value = new Date(`${date}T${time}:00`);
+  return Number.isNaN(value.getTime()) ? null : value;
+};

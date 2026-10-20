@@ -1,168 +1,165 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Users, Monitor, Video, CalendarPlus, MapPin, Wifi, Projector } from "lucide-react";
-import Image from "next/image";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { trpc } from "@/trpc/client";
+import { useRouter } from "next/navigation";
+import { addDays, format } from "date-fns";
+import { ListChecks, Video } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ModuleGuard } from "@/components/layout/module-guard";
+import { DaySchedule } from "@/components/meeting/day-schedule";
+import { LinkCard } from "@/components/meeting/link-card";
+import { TimeSelect } from "@/components/meeting/time-select";
+import { combineDateTime } from "@/lib/conference-booking";
+import { trpc } from "@/trpc/client";
 
-// Mock data to show if DB is empty for demonstration purposes
-const MOCK_ROOMS = [
-  {
-    id: 1,
-    name: "ห้องประชุมพุทธชินราช (ชั้น 1)",
-    description: "ห้องประชุมขนาดใหญ่ เหมาะสำหรับการประชุมระดับจังหวัดและการสัมมนา",
-    capacity: 100,
-    location: "อาคาร 1 ชั้น 1",
-    facilities: ["Projector", "Video Conference", "Microphone", "Wifi"],
-    image_url: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&q=80&w=600&h=400",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "ห้องประชุม 2 (ชั้น 3)",
-    description: "ห้องประชุมขนาดกลาง เหมาะสำหรับการประชุมกลุ่มงานย่อย",
-    capacity: 30,
-    location: "อาคาร 1 ชั้น 3",
-    facilities: ["TV", "Microphone", "Wifi"],
-    image_url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600&h=400",
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "ห้องประชุม 3 (ชั้น 4)",
-    description: "ห้องประชุมขนาดเล็ก เหมาะสำหรับการประชุมออนไลน์และประชุมทีม",
-    capacity: 15,
-    location: "อาคาร 1 ชั้น 4",
-    facilities: ["TV", "Wifi", "Whiteboard"],
-    image_url: "https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&q=80&w=600&h=400",
-    status: "active",
-  }
-];
+export default function MeetingBookingPage() {
+  const router = useRouter();
+  const [date, setDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
+  const [attendees, setAttendees] = useState("10");
+  const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
 
-const getFacilityIcon = (facility: string) => {
-  const f = facility.toLowerCase();
-  if (f.includes('projector')) return <Projector className="w-3.5 h-3.5"/>;
-  if (f.includes('video')) return <Video className="w-3.5 h-3.5"/>;
-  if (f.includes('wifi')) return <Wifi className="w-3.5 h-3.5"/>;
-  if (f.includes('tv') || f.includes('monitor')) return <Monitor className="w-3.5 h-3.5"/>;
-  return null;
-};
+  const startAt = useMemo(() => combineDateTime(date, startTime), [date, startTime]);
+  const endAt = useMemo(() => combineDateTime(date, endTime), [date, endTime]);
+  const attendeeCount = Number(attendees);
+  const isTimeValid = Boolean(startAt && endAt && endAt > startAt);
+  const isAttendeesValid = Number.isInteger(attendeeCount) && attendeeCount > 0;
 
-export default function MeetingRoomsPage() {
- // Use trpc to fetch rooms if available
-  const { data: dbRooms, isLoading } = trpc.meeting.getRooms.useQuery();
-  
- // Use DB rooms if they exist, otherwise fallback to mock data
-  const rooms = dbRooms && dbRooms.length > 0 ? dbRooms : MOCK_ROOMS;
+  const { data: links, isLoading } = trpc.meeting.getAvailableLinks.useQuery(
+    { startAt: startAt ?? new Date(), endAt: endAt ?? new Date(), attendees: isAttendeesValid ? attendeeCount : 1 },
+    { enabled: isTimeValid && isAttendeesValid },
+  );
+
+  const utils = trpc.useUtils();
+  const createBooking = trpc.meeting.createBooking.useMutation({
+    onSuccess: async () => {
+      await utils.meeting.invalidate();
+      toast.success("ส่งคำขอจองแล้ว รอผู้ดูแล IT อนุมัติ");
+      router.push("/meeting/my-bookings");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  // เปลี่ยนวัน/เวลาแล้วลิงก์ที่เลือกไว้อาจไม่ว่าง จึงล้างการเลือก
+  const resetSelection = <T,>(setter: (value: T) => void) => (value: T) => {
+    setter(value);
+    setSelectedLinkId(null);
+  };
+
+  const selectedLink = links?.find((link) => link.id === selectedLinkId && link.availability === "available");
+  const canSubmit = Boolean(selectedLink && title.trim() && isTimeValid && isAttendeesValid && !createBooking.isPending);
+
+  const handleSubmit = () => {
+    if (!selectedLink || !startAt || !endAt) return;
+    createBooking.mutate({ linkId: selectedLink.id, title, description: description || undefined, startAt, endAt, attendees: attendeeCount });
+  };
 
   return (
     <ModuleGuard moduleKey="module_meeting">
-      <div className="space-y-6">
-        {/* ... existing content ... */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">จองห้องประชุม</h1>
-            <p className="text-slate-500 mt-1">เลือกห้องประชุมที่ต้องการใช้งาน และดูตารางการจอง</p>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+              <Video className="h-6 w-6 text-indigo-600" />
+              จอง Web Conference
+            </h1>
+            <p className="mt-1 text-slate-500">เลือกวันและเวลา แล้วเลือกลิงก์ที่ว่าง คำขอจะรอผู้ดูแล IT อนุมัติ</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.location.href = "/meeting/my-bookings"}>
+          <Link href="/meeting/my-bookings">
+            <Button variant="outline">
+              <ListChecks className="mr-2 h-4 w-4" />
               การจองของฉัน
             </Button>
-          </div>
+          </Link>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-80 bg-slate-100 rounded-xl border border-slate-200"></div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {rooms.map((room) => (
-              <Card key={room.id} className="overflow-hidden border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-slate-300">
-                <div className="relative h-48 w-full bg-slate-100">
-                  {room.image_url ? (
-                    <Image 
-                      src={room.image_url} 
-                      alt={room.name}
-                      fill
-                      className="object-cover"
-                   />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-slate-400">
-                      <Monitor className="w-12 h-12 opacity-20"/>
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <Badge className="bg-emerald-500/90 hover:bg-emerald-500 text-white border-0 shadow-sm backdrop-blur-sm">
-                      พร้อมใช้งาน
-                    </Badge>
-                  </div>
-                </div>
-                
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg line-clamp-1">{room.name}</CardTitle>
-                  <div className="flex items-center text-xs text-slate-500 mt-1.5">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400"/>
-                    {room.location}
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="pb-4">
-                  <p className="text-sm text-slate-600 line-clamp-2 min-h-[40px] mb-4">
-                    {room.description}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-100">
-                      <Users className="w-3.5 h-3.5 mr-1"/>
-                      รับได้ {room.capacity} คน
-                    </Badge>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-slate-500">สิ่งอำนวยความสะดวก:</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {/* Handle both JSON array string from DB or real array from mock */}
-                      {Array.isArray(room.facilities) ? (room.facilities as any[]).map((facility: string, idx: number) => (
-                        <Badge key={idx} variant="outline" className="text-xs font-normal text-slate-600 border-slate-200">
-                          {getFacilityIcon(facility)}
-                          <span className="ml-1">{facility}</span>
-                        </Badge>
-                      )) : typeof room.facilities === 'string' && room.facilities.length > 0 ? 
-                        (() => {
-                          try {
-                            const parsed = JSON.parse(room.facilities);
-                            return Array.isArray(parsed) ? parsed.map((facility: string, idx: number) => (
-                              <Badge key={idx} variant="outline" className="text-xs font-normal text-slate-600 border-slate-200">
-                                {getFacilityIcon(facility)}
-                                <span className="ml-1">{facility}</span>
-                              </Badge>
-                            )) : null;
-                          } catch (e) {
-                            return null;
-                          }
-                        })()
-                      : null}
-                    </div>
-                  </div>
-                </CardContent>
-                
-                <CardFooter className="pt-0 pb-4 px-6">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-sm" onClick={() => window.location.href = `/meeting/book?roomId=${room.id}`}>
-                    <CalendarPlus className="w-4 h-4 mr-2"/>
-                    จองห้องนี้
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-lg">1. เลือกวันและเวลา</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-date">วันที่</Label>
+              <Input id="booking-date" type="date" value={date} min={format(new Date(), "yyyy-MM-dd")} onChange={(e) => resetSelection(setDate)(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-start">เวลาเริ่ม</Label>
+              <TimeSelect id="booking-start" value={startTime} onChange={resetSelection(setStartTime)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-end">เวลาสิ้นสุด</Label>
+              <TimeSelect id="booking-end" value={endTime} onChange={resetSelection(setEndTime)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-attendees">จำนวนผู้เข้าร่วม (คน)</Label>
+              <Input id="booking-attendees" type="number" min={1} value={attendees} onChange={(e) => resetSelection(setAttendees)(e.target.value)} />
+            </div>
+            {!isTimeValid ? <p className="text-sm text-rose-600 sm:col-span-2 lg:col-span-4">เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม</p> : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-lg">2. เลือกลิงก์</CardTitle>
+            <CardDescription>กดเลือกได้เฉพาะลิงก์ที่ว่างในช่วงเวลานี้</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            {!isTimeValid || !isAttendeesValid ? (
+              <p className="text-sm text-slate-500">กรุณาเลือกวัน เวลา และจำนวนผู้เข้าร่วมให้ถูกต้อง</p>
+            ) : isLoading ? (
+              <p className="text-sm text-slate-400">กำลังตรวจสอบลิงก์ที่ว่าง...</p>
+            ) : !links || links.length === 0 ? (
+              <p className="text-sm text-slate-500">ยังไม่มีลิงก์ Web Conference ในระบบ กรุณาติดต่อผู้ดูแล IT</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {links.map((link) => (
+                  <LinkCard
+                    key={link.id}
+                    name={link.name}
+                    platform={link.platform}
+                    maxParticipants={link.max_participants}
+                    description={link.description}
+                    availability={link.availability}
+                    selected={link.id === selectedLinkId}
+                    onSelect={() => setSelectedLinkId(link.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-lg">3. รายละเอียดการประชุม</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-title">หัวข้อการประชุม</Label>
+              <Input id="booking-title" value={title} maxLength={500} onChange={(e) => setTitle(e.target.value)} placeholder="เช่น ประชุมติดตามงานควบคุมโรค" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-description">รายละเอียดเพิ่มเติม (ไม่บังคับ)</Label>
+              <Textarea id="booking-description" value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[80px]" />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSubmit} disabled={!canSubmit} className="bg-blue-600 hover:bg-blue-700">
+                {createBooking.isPending ? "กำลังส่งคำขอ..." : "ส่งคำขอจอง"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <DaySchedule date={combineDateTime(date, "00:00")} />
       </div>
     </ModuleGuard>
   );

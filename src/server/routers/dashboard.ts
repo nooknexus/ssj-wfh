@@ -44,7 +44,7 @@ export const dashboardRouter = createTRPCRouter({
     // 3. Today Meetings
     const todayMeetings = await ctx.db.meetingBooking.count({
       where: {
-        date: {
+        start_at: {
           gte: start,
           lte: end,
         },
@@ -104,8 +104,8 @@ export const dashboardRouter = createTRPCRouter({
 
     const recentBookings = await ctx.db.meetingBooking.findMany({
       where: { user_id: userId },
-      include: { room: true },
-      orderBy: { date: "desc" },
+      include: { link: { select: { name: true, platform: true } } },
+      orderBy: { start_at: "desc" },
       take: 3,
     });
 

@@ -71,11 +71,11 @@
 - ใช้โมเดล Prisma จากงานที่ 1 และ domain function จากงานที่ 2
 - ส่งมอบ `getAvailableLinks`, `getDaySchedule`, `createBooking`, `getMyBookings`, `cancelBooking`, `getAllBookings`, `updateBookingStatus`, `listLinks`, `createLink`, `updateLink`
 
-- [ ] **ขั้นที่ 1:** เขียน caller-level test ที่ล้มเหลวสำหรับการปฏิเสธผู้ใช้ที่ไม่ใช่แอดมิน การยกเลิกโดยเจ้าของเท่านั้น การเปิดเผย URL เฉพาะอนุมัติ การปฏิเสธเวลาชนกับ pending และการปฏิเสธเวลาชนขณะอนุมัติ
-- [ ] **ขั้นที่ 2:** รัน `npm test -- src/server/routers/meeting.test.ts`; **ผลที่คาดหวัง:** ล้มเหลวเพราะ API ห้องประชุมเดิมไม่มีพฤติกรรมนี้
-- [ ] **ขั้นที่ 3:** เพิ่ม `CONFERENCE_ADMIN_ROLES` แล้วแทน router ด้วย procedure ที่ validate ด้วย Zod ใช้ interactive transaction สำหรับตรวจเวลาชนตอนสร้างและอนุมัติ และคืน DTO ที่ปิดบัง URL ตามสิทธิ์
-- [ ] **ขั้นที่ 4:** รัน router/domain test แบบ focused ซ้ำ ผลที่คาดหวัง: ผ่านทั้งหมด
-- [ ] **ขั้นที่ 5:** Commit `feat(api): secure web conference booking procedures`
+- [x] **ขั้นที่ 1:** เขียน caller-level test ที่ล้มเหลวสำหรับการปฏิเสธผู้ใช้ที่ไม่ใช่แอดมิน การยกเลิกโดยเจ้าของเท่านั้น การเปิดเผย URL เฉพาะอนุมัติ การปฏิเสธเวลาชนกับ pending และการปฏิเสธเวลาชนขณะอนุมัติ
+- [x] **ขั้นที่ 2:** รัน `npm test -- src/server/routers/meeting.test.ts`; **ผลที่คาดหวัง:** ล้มเหลวเพราะ API ห้องประชุมเดิมไม่มีพฤติกรรมนี้
+- [x] **ขั้นที่ 3:** เพิ่ม `CONFERENCE_ADMIN_ROLES` แล้วแทน router ด้วย procedure ที่ validate ด้วย Zod ใช้ interactive transaction สำหรับตรวจเวลาชนตอนสร้างและอนุมัติ และคืน DTO ที่ปิดบัง URL ตามสิทธิ์
+- [x] **ขั้นที่ 4:** รัน router/domain test แบบ focused ซ้ำ ผลที่คาดหวัง: ผ่านทั้งหมด
+- [x] **ขั้นที่ 5:** Commit `feat(api): secure web conference booking procedures`
 
 ### Task 4: สร้างหน้าจองสำหรับผู้ใช้
 

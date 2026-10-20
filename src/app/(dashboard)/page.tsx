@@ -195,7 +195,7 @@ export default function DashboardPage() {
                     <div>
                       <div className="text-sm font-medium text-slate-900">{booking.title}</div>
                       <div className="text-xs text-slate-500">
-                        {format(new Date(booking.date), "d MMM yy", { locale: th })} | {booking.room.name}
+                        {format(new Date(booking.start_at), "d MMM yy", { locale: th })} | {booking.link.name}
                       </div>
                     </div>
                     <div className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">

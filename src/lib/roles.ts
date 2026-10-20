@@ -32,6 +32,8 @@ export const WFH_APPROVER_ROLES: AppRole[] = ["superadmin", "hradmin", "leader"]
 export const ATTENDANCE_REPORT_ROLES: AppRole[] = ["superadmin", "hradmin", "leader"];
 /** เข้าเขต /admin ได้ (สิทธิ์รายหน้าตรวจซ้ำใน layout ของแต่ละหน้า) */
 export const ADMIN_AREA_ROLES: AppRole[] = ["superadmin", "itadmin", "hradmin", "leader"];
+/** จัดการลิงก์ Web Conference และอนุมัติการจอง */
+export const CONFERENCE_ADMIN_ROLES: AppRole[] = ["superadmin", "itadmin"];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   superadmin: "ผู้ดูแลระบบสูงสุด",

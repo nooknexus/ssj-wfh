@@ -48,12 +48,12 @@ const ColumnCells = ({ days, total }: { days?: number[]; total?: number }) => (
 const ReportHead = () => (
   <thead className="table-header-group">
     <tr>
-      <th rowSpan={2} className={`${head} w-8`}>ลำดับที่</th>
-      <th rowSpan={2} className={`${head} min-w-[150px]`}>ชื่อ - นามสกุล</th>
+      <th rowSpan={2} className={`${head} w-8 whitespace-nowrap`}>ลำดับที่</th>
+      <th rowSpan={2} className={`${head} min-w-[140px]`}>ชื่อ - นามสกุล</th>
       {COLUMN_GROUPS.map(([label]) => (
         <SubHead key={label} label={label} />
       ))}
-      <th className={head}>ไม่สแกนออก</th>
+      <th className={`${head} min-w-[64px]`}>ไม่สแกนออก</th>
       <th className={head}>เซ็นชื่อ</th>
       <th rowSpan={2} className={`${head} min-w-[90px]`}>หมายเหตุ</th>
     </tr>
@@ -69,7 +69,7 @@ const ReportHead = () => (
 
 const SubHead = ({ label }: { label: string }) => (
   <>
-    <th className={head}>{label}</th>
+    <th className={`${head} min-w-[64px]`}>{label}</th>
     <th className={`${head} w-9`}>รวม</th>
   </>
 );

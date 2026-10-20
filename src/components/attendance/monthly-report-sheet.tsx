@@ -8,6 +8,12 @@ import { trpc } from "@/trpc/client";
 
 const MIN_ROWS = 10;
 
+/** รอให้ฟอนต์ Sarabun โหลดครบก่อนเปิดหน้าต่างพิมพ์ ไม่เช่นนั้นเบราว์เซอร์อาจใช้ฟอนต์สำรอง */
+const printWhenFontsReady = async () => {
+  await document.fonts.ready;
+  window.print();
+};
+
 /** คอลัมน์ตามฟอร์ม: [หัวข้อ, คอลัมน์ข้อมูล] แต่ละคอลัมน์มีช่อง (วันที่) และ รวม (วัน) */
 const COLUMN_GROUPS: Array<[string, ReportColumn]> = [
   ["ลาพักผ่อน", "vacation"],
@@ -34,7 +40,7 @@ const ReportRow = ({ index, row }: { index: number; row?: Row }) => (
     ))}
     <td className={cell}>{row ? formatDayList(row.noCheckOutDays) : ""}</td>
     <td className={cell} />
-    <td className={`${cell} text-[9px]`}>{row?.remark ?? ""}</td>
+    <td className={`${cell} text-[10px]`}>{row?.remark ?? ""}</td>
   </tr>
 );
 
@@ -53,7 +59,7 @@ const ReportHead = () => (
       {COLUMN_GROUPS.map(([label]) => (
         <SubHead key={label} label={label} />
       ))}
-      <th className={`${head} min-w-[64px]`}>ไม่สแกนออก</th>
+      <th className={`${head} min-w-[72px] whitespace-nowrap`}>ไม่สแกนออก</th>
       <th className={head}>เซ็นชื่อ</th>
       <th rowSpan={2} className={`${head} min-w-[90px]`}>หมายเหตุ</th>
     </tr>
@@ -69,7 +75,7 @@ const ReportHead = () => (
 
 const SubHead = ({ label }: { label: string }) => (
   <>
-    <th className={`${head} min-w-[64px]`}>{label}</th>
+    <th className={`${head} min-w-[72px] whitespace-nowrap`}>{label}</th>
     <th className={`${head} w-9`}>รวม</th>
   </>
 );
@@ -94,20 +100,20 @@ export const MonthlyReportSheet = ({ month, departmentId }: { month: string; dep
           <Button variant="outline" size="sm"><ArrowLeft className="mr-1.5 h-4 w-4" />กลับ</Button>
         </Link>
         <p className="hidden text-sm text-slate-500 sm:block">กดพิมพ์ แล้วเลือกปลายทาง &quot;บันทึกเป็น PDF&quot; (Save as PDF) และแนวกระดาษแนวนอน</p>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={!data} onClick={() => window.print()}>
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={!data} onClick={printWhenFontsReady}>
           <Printer className="mr-1.5 h-4 w-4" />พิมพ์ / บันทึกเป็น PDF
         </Button>
       </div>
 
-      <div className="mx-auto my-6 w-[297mm] max-w-full bg-white p-[8mm] text-[10px] leading-tight text-black shadow print:my-0 print:w-auto print:p-0 print:shadow-none">
+      <div className="mx-auto my-6 w-[297mm] max-w-full bg-white p-[8mm] text-[11.5px] leading-snug text-black shadow print:my-0 print:w-auto print:p-0 print:shadow-none">
         {isLoading ? (
           <p className="py-20 text-center text-sm text-slate-500">กำลังเตรียมรายงาน...</p>
         ) : error ? (
           <p className="py-20 text-center text-sm text-rose-600">{error.message}</p>
         ) : data ? (
           <>
-            <header className="mb-2 space-y-0.5 text-center text-[13px] font-semibold">
-              <h1 className="text-[15px] font-bold">แบบรายงานการลงเวลาปฏิบัติราชการของเจ้าหน้าที่</h1>
+            <header className="mb-2 space-y-0.5 text-center text-[15px] font-semibold">
+              <h1 className="text-[18px] font-bold">แบบรายงานการลงเวลาปฏิบัติราชการของเจ้าหน้าที่</h1>
               <p>{data.departmentName}</p>
               <p>ประจำเดือน {data.monthLabel}</p>
             </header>
@@ -130,7 +136,7 @@ export const MonthlyReportSheet = ({ month, departmentId }: { month: string; dep
 type Personnel = { rows: Array<{ label: string; count: number }>; total: number; available: boolean };
 
 const PersonnelSummary = ({ personnel }: { personnel: Personnel }) => (
-  <div className="mt-4 flex break-inside-avoid items-end justify-between gap-6 text-[11px]">
+  <div className="mt-4 flex break-inside-avoid items-end justify-between gap-6 text-[12.5px]">
     <table>
       <tbody>
         {personnel.rows.map((row) => (

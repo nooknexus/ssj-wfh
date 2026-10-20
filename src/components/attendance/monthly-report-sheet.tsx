@@ -108,7 +108,7 @@ export const MonthlyReportSheet = ({ month, departmentId }: { month: string; dep
           <>
             <header className="mb-2 space-y-0.5 text-center text-[13px] font-semibold">
               <h1 className="text-[15px] font-bold">แบบรายงานการลงเวลาปฏิบัติราชการของเจ้าหน้าที่</h1>
-              <p>กลุ่มงาน/งาน {data.departmentName}</p>
+              <p>{data.departmentName}</p>
               <p>ประจำเดือน {data.monthLabel}</p>
             </header>
             <table className="w-full border-collapse">

@@ -36,16 +36,19 @@ enum LeaveStatus {
   cancelled
 }
 
-enum RoomStatus {
-  active
-  maintenance
-}
-
 enum BookingStatus {
   pending
   approved
   rejected
   cancelled
+}
+
+enum ConferencePlatform {
+  zoom
+  teams
+  meet
+  webex
+  other
 }
 
 enum DocType {
@@ -255,40 +258,36 @@ model WfhRequest {
   @@map("wfh_requests")
 }
 
-model MeetingRoom {
-  id          Int        @id @default(autoincrement())
-  name        String     @db.VarChar(200)
-  description String?    @db.Text
-  capacity    Int?
-  location    String?    @db.VarChar(200)
-  facilities  Json?
-  image_url   String?    @db.VarChar(500)
-  status      RoomStatus @default(active)
+model ConferenceLink {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(200)
+  platform         ConferencePlatform
+  url              String             @db.VarChar(1000)
+  max_participants Int?
+  description      String?            @db.Text
+  is_active        Boolean            @default(true)
+  sort_order       Int                @default(0)
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @updatedAt
+  bookings         MeetingBooking[]
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  bookings MeetingBooking[]
-
-  @@map("meeting_rooms")
+  @@map("conference_links")
 }
 
 model MeetingBooking {
-  id            Int         @id @default(autoincrement())
-  room_id       Int
-  room          MeetingRoom @relation(fields: [room_id], references: [id])
+  id            Int            @id @default(autoincrement())
+  link_id       Int
+  link          ConferenceLink @relation(fields: [link_id], references: [id])
   user_id       Int
-  user          User        @relation("BookingUser", fields: [user_id], references: [id])
+  user          User           @relation("BookingUser", fields: [user_id], references: [id])
   department_id Int?
-  department    Department? @relation(fields: [department_id], references: [id])
+  department    Department?    @relation(fields: [department_id], references: [id])
 
-  title           String   @db.VarChar(500)
-  description     String?  @db.Text
-  date            DateTime @db.Date
-  start_time      DateTime @db.Time
-  end_time        DateTime @db.Time
-  attendees       Int?
-  equipment_needs String?  @db.Text
+  title       String   @db.VarChar(500)
+  description String?  @db.Text
+  start_at    DateTime
+  end_at      DateTime
+  attendees   Int?
 
   status        BookingStatus @default(pending)
   approved_by   Int?
@@ -299,6 +298,7 @@ model MeetingBooking {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@index([link_id, start_at])
   @@map("meeting_bookings")
 }
 

@@ -38,11 +38,11 @@
 **ส่วนเชื่อมต่อ:**
 - ส่งมอบ Prisma `ConferenceLink`, `ConferencePlatform` และ `MeetingBooking` ที่มี `link_id`, `start_at`, `end_at` ให้แก่งานที่ 3–7
 
-- [ ] **ขั้นที่ 1:** เพิ่ม fixture หรือ executable check ของ migration ที่พิสูจน์ว่า guard ปฏิเสธตารางเดิมที่มีข้อมูล
-- [ ] **ขั้นที่ 2:** รัน check กับ schema พัฒนาที่ว่าง และยืนยันว่าล้มเหลวก่อนมี migration
-- [ ] **ขั้นที่ 3:** แก้ Prisma schema และเขียน SQL migration ที่มี empty-table guard, การแทนตาราง, index, foreign key และ generate client
-- [ ] **ขั้นที่ 4:** รัน migration safety check และ Prisma validation ซ้ำ ผลที่คาดหวัง: ผ่าน
-- [ ] **ขั้นที่ 5:** Commit `feat(db): model conference links and datetime bookings`
+- [x] **ขั้นที่ 1:** เพิ่ม fixture หรือ executable check ของ migration ที่พิสูจน์ว่า guard ปฏิเสธตารางเดิมที่มีข้อมูล
+- [x] **ขั้นที่ 2:** รัน check กับ schema พัฒนาที่ว่าง และยืนยันว่าล้มเหลวก่อนมี migration
+- [x] **ขั้นที่ 3:** แก้ Prisma schema และเขียน SQL migration ที่มี empty-table guard, การแทนตาราง, index, foreign key และ generate client
+- [x] **ขั้นที่ 4:** รัน migration safety check และ Prisma validation ซ้ำ ผลที่คาดหวัง: ผ่าน
+- [x] **ขั้นที่ 5:** Commit `feat(db): model conference links and datetime bookings`
 
 ### Task 2: เขียนและทดสอบกฎโดเมนการจอง
 

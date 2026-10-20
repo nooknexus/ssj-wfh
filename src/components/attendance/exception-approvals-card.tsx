@@ -29,7 +29,10 @@ export const ExceptionApprovalsCard = ({ enabled }: { enabled: boolean }) => {
   const { data: requests, isLoading } = trpc.attendanceException.getDepartmentRequests.useQuery(undefined, { enabled });
   const updateStatus = trpc.attendanceException.updateStatus.useMutation({
     onSuccess: async (_, input) => {
-      await utils.attendanceException.getDepartmentRequests.invalidate();
+      await Promise.all([
+        utils.attendanceException.getDepartmentRequests.invalidate(),
+        utils.attendanceException.pendingApprovalCount.invalidate(),
+      ]);
       toast.success(input.status === "approved" ? "อนุมัติเรียบร้อยแล้ว" : "บันทึกการไม่อนุมัติเรียบร้อยแล้ว");
     },
     onError: (error) => void Swal.fire("เกิดข้อผิดพลาด", error.message, "error"),

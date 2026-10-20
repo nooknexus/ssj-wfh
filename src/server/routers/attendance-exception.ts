@@ -107,6 +107,24 @@ export const attendanceExceptionRouter = createTRPCRouter({
       });
     }),
 
+  // จำนวนคำขอที่รอผู้ใช้คนนี้อนุมัติ (WFH + ลา/ไปราชการ) นับเฉพาะคำขอที่ผู้ใช้มีสิทธิ์อนุมัติจริง
+  pendingApprovalCount: protectedProcedure.query(async ({ ctx }) => {
+    const currentUser = await ctx.db.user.findUnique({
+      where: { id: Number(ctx.session.user.id) },
+      select: { department_id: true, roles: { select: { role: true } } },
+    });
+    const departmentId = currentUser?.department_id;
+    if (departmentId == null || !hasRole(currentUser?.roles.map((item) => item.role), "leader")) {
+      return { wfh: 0, exceptions: 0, total: 0 };
+    }
+    const sameDepartment = { user: { department_id: departmentId } };
+    const [wfh, exceptions] = await Promise.all([
+      ctx.db.wfhRequest.count({ where: { status: "pending", ...sameDepartment } }),
+      ctx.db.attendanceException.count({ where: { status: "pending", ...sameDepartment } }),
+    ]);
+    return { wfh, exceptions, total: wfh + exceptions };
+  }),
+
   // รายการสำหรับหน้าอนุมัติ: hradmin/superadmin เห็นทุกกลุ่มงาน หัวหน้างานเห็นเฉพาะกลุ่มงานตัวเอง
   getDepartmentRequests: protectedProcedure.query(async ({ ctx }) => {
     const currentUser = await ctx.db.user.findUnique({

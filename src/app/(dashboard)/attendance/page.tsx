@@ -8,14 +8,12 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Plus, FileText, Calendar as CalendarIcon, Clock, CheckSquare } from "lucide-react";
+import { Plus, FileText, Calendar as CalendarIcon, Clock } from "lucide-react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { ModuleGuard } from "@/components/layout/module-guard";
-import { WFH_APPROVER_ROLES, hasAnyRole } from "@/lib/roles";
+import { ApprovalsButton } from "@/components/attendance/approvals-button";
 
 export default function AttendancePage() {
-  const { data: session } = useSession();
   const { data: history, isLoading: isHistoryLoading } = trpc.attendance.getHistory.useQuery({ limit: 10 });
   const { data: wfhRecords, isLoading: isWfhLoading } = trpc.wfh.getUserRequests.useQuery();
 
@@ -38,6 +36,7 @@ export default function AttendancePage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             ระบบลงเวลาปฏิบัติงาน
           </h1>
+          <ApprovalsButton />
         </div>
 
         <div className="grid gap-8">
@@ -52,14 +51,6 @@ export default function AttendancePage() {
                 <p className="text-xs text-slate-500">ประวัติการขอปฏิบัติงานที่บ้าน</p>
               </div>
               <div className="flex gap-2">
-                {hasAnyRole(session?.user?.roles, WFH_APPROVER_ROLES) && (
-                  <Link href="/wfh/approvals">
-                    <Button size="sm" variant="outline" className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50">
-                      <CheckSquare className="w-3.5 h-3.5 mr-1.5"/>
-                      การอนุมัติคำขอ
-                    </Button>
-                  </Link>
-                )}
                 <Link href="/wfh/new">
                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8">
                     <Plus className="w-3.5 h-3.5 mr-1.5"/>

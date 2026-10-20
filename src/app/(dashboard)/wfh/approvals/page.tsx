@@ -29,6 +29,7 @@ export default function WfhApprovalsPage() {
   const updateStatusMutation = trpc.wfh.updateStatus.useMutation({
     onSuccess: () => {
       utils.wfh.getDepartmentRequests.invalidate();
+      utils.attendanceException.pendingApprovalCount.invalidate();
     },
     onError: (error) => {
       Swal.fire("เกิดข้อผิดพลาด", error.message, "error");

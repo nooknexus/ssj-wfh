@@ -50,7 +50,11 @@
    - ฝั่ง server ใช้ `roleProcedure([...])` ใน `src/server/trpc.ts` สำหรับ procedure ที่ต้องการสิทธิ์ และหน้า `/admin/*` มี guard ใน `admin/layout.tsx`
    - `leader` ผูกกับ `users.department_id` (อนุมัติได้เฉพาะกลุ่มงานตัวเอง) ส่วน `hradmin`/`superadmin` เห็นคำขอ WFH ทุกกลุ่มงาน
    - กำหนดบทบาทได้โดย itadmin/superadmin เท่านั้น และเฉพาะ superadmin ที่ให้/ถอด superadmin ได้
-7. **Session Management**
+7. **ข้อยกเว้นการลงเวลา (ลา / ไปราชการจากแผนงาน)**
+   - ตาราง `attendance_exceptions` แยกจาก `leave_requests` โดยสิ้นเชิง (ยังไม่เชื่อมกับระบบลา) 1 แถวต่อ 1 วัน ช่วงเวลา `full | morning | afternoon` ครึ่งเช้า + ครึ่งบ่ายที่อนุมัติแล้วนับเป็นเต็มวัน
+   - ผู้อนุมัติ = leader ของกลุ่มงานเดียวกับผู้ยื่น (`canApproveDepartmentLeaderRequest` ใน `src/lib/roles.ts`) leader ยื่นเองอนุมัติอัตโนมัติ
+   - Logic กลางอยู่ที่ `src/lib/attendance-exception.ts` และ `src/server/services/attendance-exception.ts` ใช้ร่วมกันใน check-in, รายงาน `getAdminRecords` และ cron แจ้งเตือน
+8. **Session Management**
    - รองรับการตั้งค่า `session_timeout` แบบ Dynamic โดยตรวจสอบ `lastActive` ใน JWT Token เทียบกับค่าที่ตั้งไว้ในฐานข้อมูลทุกครั้งที่มีการ Request ข้อมูล
 
 ## 📂 โครงสร้าง Directory ที่สำคัญ

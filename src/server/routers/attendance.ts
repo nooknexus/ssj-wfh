@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
-import { HR_ROLES } from "@/lib/roles";
+import { ATTENDANCE_REPORT_ROLES, resolveAttendanceReportScope } from "@/lib/roles";
+import { TRPCError } from "@trpc/server";
 import { startOfDay, endOfDay, format, addDays, isWeekend, isSameDay } from "date-fns";
 import { getThaiHolidaysForRange, isHoliday } from "../utils/holidays";
 import { sendMophAlert, getCheckInFlexMessage, getCheckOutFlexMessage } from "@/lib/moph-alert";
@@ -238,7 +239,7 @@ export const attendanceRouter = createTRPCRouter({
     }),
 
   // ดึงข้อมูลประวัติการลงเวลาสำหรับผู้ดูแลระบบ
-  getAdminRecords: roleProcedure(HR_ROLES)
+  getAdminRecords: roleProcedure(ATTENDANCE_REPORT_ROLES)
     .input(
       z.object({
         startDate: z.date().optional(),
@@ -253,7 +254,22 @@ export const attendanceRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      const { startDate, endDate, departmentId, status, workType, limit, page, fetchAll, search } = input;
+      const { startDate, endDate, status, workType, limit, page, fetchAll, search } = input;
+
+      // หัวหน้างานเห็นเฉพาะกลุ่มงานตัวเอง ไม่ว่า client จะส่ง departmentId อะไรมา
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: Number(ctx.session.user.id) },
+        select: { department_id: true },
+      });
+      const scope = resolveAttendanceReportScope({
+        roles: ctx.session.user.roles,
+        ownDepartmentId: currentUser?.department_id,
+        requestedDepartmentId: input.departmentId,
+      });
+      if ("error" in scope) {
+        throw new TRPCError({ code: "FORBIDDEN", message: scope.error });
+      }
+      const { departmentId } = scope;
 
       if (!startDate || !endDate) {
         throw new Error("กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุดเพื่อค้นหาข้อมูล");

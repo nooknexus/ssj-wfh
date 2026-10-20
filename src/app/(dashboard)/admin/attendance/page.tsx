@@ -15,6 +15,8 @@ import { Download, Search, RefreshCw, UserCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
+import { HR_ROLES, hasAnyRole } from "@/lib/roles";
 
 // Dynamic import for Map to avoid SSR issues
 const MapWithNoSSR = dynamic(() => import("@/components/attendance/location-map"), {
@@ -50,6 +52,9 @@ export default function AdminAttendancePage() {
   const [previewType, setPreviewType] = useState<"in" | "out">("in");
   const [search, setSearch] = useState<string>("");
   const [page, setPage] = useState<number>(1);
+  const { data: session } = useSession();
+  // หัวหน้างานที่ไม่ใช่ HR เห็นเฉพาะกลุ่มงานตัวเอง (server บังคับขอบเขตซ้ำอีกชั้น)
+  const seesAllDepartments = hasAnyRole(session?.user?.roles, HR_ROLES);
 
   const handleShowLocation = (record: any, type: "in" | "out") => {
     setSelectedRecord(record);
@@ -168,6 +173,11 @@ export default function AdminAttendancePage() {
             </div>
             <div className="space-y-2 lg:col-span-1">
               <label className="text-sm font-medium text-slate-700">กลุ่มงาน</label>
+              {!seesAllDepartments ? (
+                <div className="flex h-9 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
+                  เฉพาะกลุ่มงานของท่าน
+                </div>
+              ) : (
               <Select value={departmentId} onValueChange={(val) => handleFilterChange(setDepartmentId, val || "all")}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="ทั้งหมด">
@@ -183,6 +193,7 @@ export default function AdminAttendancePage() {
                   ))}
                 </SelectContent>
               </Select>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">

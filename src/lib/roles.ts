@@ -28,6 +28,10 @@ export const SYSTEM_ADMIN_ROLES: AppRole[] = ["superadmin", "itadmin"];
 export const PRIVILEGED_ROLES: AssignableRole[] = ["superadmin", "itadmin"];
 export const HR_ROLES: AppRole[] = ["superadmin", "hradmin"];
 export const WFH_APPROVER_ROLES: AppRole[] = ["superadmin", "hradmin", "leader"];
+/** ดูรายงานการลงเวลาได้ (leader เห็นเฉพาะกลุ่มงานตัวเอง) */
+export const ATTENDANCE_REPORT_ROLES: AppRole[] = ["superadmin", "hradmin", "leader"];
+/** เข้าเขต /admin ได้ (สิทธิ์รายหน้าตรวจซ้ำใน layout ของแต่ละหน้า) */
+export const ADMIN_AREA_ROLES: AppRole[] = ["superadmin", "itadmin", "hradmin", "leader"];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   superadmin: "ผู้ดูแลระบบสูงสุด",
@@ -50,6 +54,9 @@ export const ADMIN_NAV_BY_ROLE: Partial<Record<AppRole, AdminNavItem[]>> = {
     { name: "จัดการกลุ่มงาน", href: "/admin/departments", icon: "building2" },
     { name: "รายการลงเวลา", href: "/admin/attendance", icon: "clock" },
     { name: "รายการลาทั้งหมด", href: "/admin/leaves", icon: "fileText" },
+  ],
+  leader: [
+    { name: "รายการลงเวลา", href: "/admin/attendance", icon: "clock" },
   ],
   itadmin: [
     { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: "users" },
@@ -179,3 +186,22 @@ export const canApproveDepartmentLeaderRequest = (input: DepartmentApprovalInput
 
 /** ชื่อเดิม คงไว้เพื่อความเข้ากันได้ */
 export const canApproveWfhRequest = canApproveDepartmentLeaderRequest;
+
+type ReportScopeInput = {
+  roles: readonly string[];
+  ownDepartmentId: number | null | undefined;
+  requestedDepartmentId?: number;
+};
+
+/**
+ * ขอบเขตกลุ่มงานของรายงานการลงเวลา
+ * hradmin/superadmin เลือกได้ทุกกลุ่มงาน, หัวหน้างานถูกบังคับให้เห็นเฉพาะกลุ่มงานตัวเอง
+ */
+export const resolveAttendanceReportScope = (
+  input: ReportScopeInput,
+): { departmentId: number | undefined } | { error: string } => {
+  if (hasAnyRole(input.roles, HR_ROLES)) return { departmentId: input.requestedDepartmentId };
+  if (!hasRole(input.roles, "leader")) return { error: "ไม่มีสิทธิ์เข้าถึงข้อมูลนี้" };
+  if (input.ownDepartmentId == null) return { error: "ยังไม่ได้กำหนดกลุ่มงานของท่าน กรุณาติดต่อผู้ดูแลระบบ" };
+  return { departmentId: input.ownDepartmentId };
+};

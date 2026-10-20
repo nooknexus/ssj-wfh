@@ -12,6 +12,7 @@ import {
   hasAnyRole,
   hasRole,
   normalizeRoles,
+  resolveAttendanceReportScope,
   validateRoleChange,
 } from "./roles";
 
@@ -59,8 +60,8 @@ describe("getPrimaryRole / labels", () => {
 });
 
 describe("getAdminNavigation", () => {
-  it("should be empty for staff and leader", () => {
-    expect(getAdminNavigation(["leader"])).toEqual([]);
+  it("should be empty for staff", () => {
+    expect(getAdminNavigation(["staff"])).toEqual([]);
   });
 
   it("should merge menus of multiple roles without duplicates", () => {
@@ -220,5 +221,27 @@ describe("hradmin user management", () => {
     expect(hrefs).toContain("/admin/users");
     expect(hrefs).toContain("/admin/departments");
     expect(hrefs).not.toContain("/admin/settings");
+  });
+});
+
+describe("resolveAttendanceReportScope", () => {
+  it("should let HR roles pick any department or all", () => {
+    expect(resolveAttendanceReportScope({ roles: ["hradmin"], ownDepartmentId: 1, requestedDepartmentId: 5 })).toEqual({ departmentId: 5 });
+    expect(resolveAttendanceReportScope({ roles: ["superadmin"], ownDepartmentId: null })).toEqual({ departmentId: undefined });
+  });
+
+  it("should force leaders to their own department", () => {
+    expect(resolveAttendanceReportScope({ roles: ["leader"], ownDepartmentId: 3, requestedDepartmentId: 9 })).toEqual({ departmentId: 3 });
+    expect(resolveAttendanceReportScope({ roles: ["leader"], ownDepartmentId: 3 })).toEqual({ departmentId: 3 });
+  });
+
+  it("should reject leaders without a department and other roles", () => {
+    expect(resolveAttendanceReportScope({ roles: ["leader"], ownDepartmentId: null })).toHaveProperty("error");
+    expect(resolveAttendanceReportScope({ roles: ["itadmin"], ownDepartmentId: 1 })).toHaveProperty("error");
+    expect(resolveAttendanceReportScope({ roles: ["staff"], ownDepartmentId: 1 })).toHaveProperty("error");
+  });
+
+  it("should show the attendance report menu to leaders only", () => {
+    expect(getAdminNavigation(["leader"]).map((item) => item.href)).toEqual(["/admin/attendance"]);
   });
 });

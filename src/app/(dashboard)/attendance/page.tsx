@@ -56,7 +56,7 @@ export default function AttendancePage() {
                   <Link href="/wfh/approvals">
                     <Button size="sm" variant="outline" className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50">
                       <CheckSquare className="w-3.5 h-3.5 mr-1.5"/>
-                      การอนุมัติ WFH
+                      การอนุมัติคำขอ
                     </Button>
                   </Link>
                 )}

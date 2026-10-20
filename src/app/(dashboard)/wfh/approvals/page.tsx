@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { WFH_APPROVER_ROLES, hasAnyRole } from "@/lib/roles";
+import { ExceptionApprovalsCard } from "@/components/attendance/exception-approvals-card";
 
 export default function WfhApprovalsPage() {
   const router = useRouter();
@@ -115,14 +116,14 @@ export default function WfhApprovalsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">การอนุมัติ WFH</h1>
-          <p className="text-slate-500 mt-1">รายการคำขอปฏิบัติงานที่บ้านของบุคลากรในแผนก</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">การอนุมัติคำขอ</h1>
+          <p className="text-slate-500 mt-1">คำขอปฏิบัติงานที่บ้าน และคำขอลา / ไปราชการของบุคลากรในกลุ่มงาน</p>
         </div>
       </div>
 
       <Card className="border-slate-200 shadow-sm">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-          <CardTitle className="text-lg">รายการคำขอ (ทั้งหมด)</CardTitle>
+          <CardTitle className="text-lg">คำขอปฏิบัติงานที่บ้าน (WFH)</CardTitle>
           <CardDescription>แสดงรายการคำขอทั้งหมด เรียงลำดับจากรายการที่รอดำเนินการ</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -211,6 +212,8 @@ export default function WfhApprovalsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ExceptionApprovalsCard enabled={status === "authenticated" && canApprove} />
     </div>
   );
 }

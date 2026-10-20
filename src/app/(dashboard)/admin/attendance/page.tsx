@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Search, RefreshCw, UserCircle2 } from "lucide-react";
+import { Download, FileText, Search, RefreshCw, UserCircle2 } from "lucide-react";
+import { MonthlyReportDialog } from "@/components/attendance/monthly-report-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import dynamic from "next/dynamic";
@@ -47,6 +48,7 @@ export default function AdminAttendancePage() {
   const [status, setStatus] = useState<string>("all");
   const [workType, setWorkType] = useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewType, setPreviewType] = useState<"in" | "out">("in");
@@ -131,7 +133,7 @@ export default function AdminAttendancePage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">จัดการข้อมูลการลงเวลา</h1>
           <p className="text-slate-500 mt-1">ดูและส่งออกข้อมูลการลงเวลาปฏิบัติงานของบุคลากรทั้งหมด</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" /> รีเฟรช
           </Button>
@@ -139,8 +141,12 @@ export default function AdminAttendancePage() {
             {isExporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             ส่งออก Excel
           </Button>
+          <Button onClick={() => setIsMonthlyReportOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <FileText className="h-4 w-4" /> พิมพ์แบบรายงานประจำเดือน (PDF)
+          </Button>
         </div>
       </div>
+      {isMonthlyReportOpen ? <MonthlyReportDialog onClose={() => setIsMonthlyReportOpen(false)} /> : null}
 
       <Card>
         <CardHeader className="pb-4 border-b">

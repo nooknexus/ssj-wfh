@@ -124,3 +124,40 @@ export const assertSqlIdentifier = (value: string, label: string): string => {
   }
   return value;
 };
+
+export type LeaveSyncTrigger = "manual" | "cron";
+
+export type LastLeaveSync = {
+  at: string;
+  trigger: LeaveSyncTrigger;
+  ok: boolean;
+  message: string;
+};
+
+/** อ่านผล Sync ล่าสุดที่เก็บเป็น JSON ใน system_settings คืน null ถ้าไม่มีหรืออ่านไม่ได้ */
+export const parseLastLeaveSync = (raw: string | null | undefined): LastLeaveSync | null => {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<LastLeaveSync>;
+    if (typeof value.at !== "string" || Number.isNaN(Date.parse(value.at))) return null;
+    return {
+      at: value.at,
+      trigger: value.trigger === "cron" ? "cron" : "manual",
+      ok: value.ok === true,
+      message: typeof value.message === "string" ? value.message : "",
+    };
+  } catch {
+    return null;
+  }
+};
+
+/** ข้อความสรุปผล Sync สำหรับแสดงผลและบันทึก */
+export const summarizeLeaveSync = (result: {
+  fetchedCount: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}): string =>
+  `อ่าน ${result.fetchedCount} เพิ่มใหม่ ${result.createdCount} อัปเดต ${result.updatedCount} ข้าม ${result.skippedCount}` +
+  (result.failedCount ? ` ผิดพลาด ${result.failedCount}` : "");

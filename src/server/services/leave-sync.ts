@@ -5,6 +5,10 @@ import {
   LEAVE_SOURCE,
   assertSqlIdentifier,
   pickExternalName,
+  parseLastLeaveSync,
+  summarizeLeaveSync,
+  type LastLeaveSync,
+  type LeaveSyncTrigger,
   transformRemoteLeave,
   type LeaveRecordInput,
   type RemoteLeaveRow,
@@ -195,3 +199,57 @@ async function relinkUnlinkedLeaves(): Promise<number> {
   }
   return linkedCount;
 }
+
+const LOCK_KEY = "leave_sync_lock";
+const LAST_SYNC_KEY = "leave_sync_last";
+/** ถ้า Sync ค้างเกินเวลานี้ (เช่น server ล่มกลางทาง) ให้ถือว่าล็อกหมดอายุ */
+const LOCK_TTL_MS = 10 * 60 * 1000;
+
+/** จองสิทธิ์ Sync แบบ atomic: สำเร็จเฉพาะเมื่อไม่มีใครถือล็อก หรือล็อกเดิมหมดอายุแล้ว */
+const acquireSyncLock = async (): Promise<boolean> => {
+  await db.systemSetting.upsert({
+    where: { setting_key: LOCK_KEY },
+    update: {},
+    create: { setting_key: LOCK_KEY, setting_value: "" },
+  });
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - LOCK_TTL_MS).toISOString();
+  const { count } = await db.systemSetting.updateMany({
+    where: { setting_key: LOCK_KEY, OR: [{ setting_value: "" }, { setting_value: { lt: cutoff } }] },
+    data: { setting_value: now.toISOString() },
+  });
+  return count === 1;
+};
+
+const releaseSyncLock = () =>
+  db.systemSetting.update({ where: { setting_key: LOCK_KEY }, data: { setting_value: "" } });
+
+const saveLastSync = (value: LastLeaveSync) =>
+  db.systemSetting.upsert({
+    where: { setting_key: LAST_SYNC_KEY },
+    update: { setting_value: JSON.stringify(value) },
+    create: { setting_key: LAST_SYNC_KEY, setting_value: JSON.stringify(value) },
+  });
+
+export const getLastLeaveSync = async (): Promise<LastLeaveSync | null> => {
+  const setting = await db.systemSetting.findUnique({ where: { setting_key: LAST_SYNC_KEY } });
+  return parseLastLeaveSync(setting?.setting_value);
+};
+
+/** Sync พร้อมกันซ้อนไม่ได้ และบันทึกผลครั้งล่าสุด (ทั้งสำเร็จและล้มเหลว) ไว้แสดงในหน้า /admin/leaves */
+export const runLeaveSync = async (trigger: LeaveSyncTrigger): Promise<LeaveSyncResult> => {
+  if (!(await acquireSyncLock())) {
+    throw new Error("กำลัง Sync ข้อมูลอยู่ กรุณารอสักครู่แล้วลองใหม่");
+  }
+  try {
+    const result = await syncLeavesFromSource();
+    await saveLastSync({ at: new Date().toISOString(), trigger, ok: result.failedCount === 0, message: summarizeLeaveSync(result) });
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Sync ไม่สำเร็จ";
+    await saveLastSync({ at: new Date().toISOString(), trigger, ok: false, message });
+    throw error;
+  } finally {
+    await releaseSyncLock();
+  }
+};

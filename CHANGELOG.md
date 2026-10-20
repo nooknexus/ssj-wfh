@@ -14,6 +14,7 @@
 - ตั้งค่า "เวลาเริ่มงานช่วงบ่าย" (`afternoon_start_time`) ในหน้าตั้งค่าระบบ
 
 - **Sync ใบลาจาก MySQL ของระบบลาแทน Google Sheet**: ปุ่ม "Sync ข้อมูลจากระบบลา" ในหน้า `/admin/leaves` ดึงจากตาราง `leave_requests` + `leave_types` ของระบบลาโดยตรง ตั้งค่าใน `.env` (`LEAVE_DB_HOST`, `LEAVE_DB_PORT`, `LEAVE_DB_USER`, `LEAVE_DB_PASSWORD`, `LEAVE_DB_NAME`, `LEAVE_DB_LEAVE_TYPE_NAME_COLUMN`, `LEAVE_SYNC_DAYS_BACK`) และรองรับสถานะ "ยกเลิก"
+- **Sync ใบลาอัตโนมัติ**: เพิ่ม `GET /api/cron/leave-sync` สำหรับ crontab (ดู DEPLOY.md ข้อ 7) กัน Sync ซ้อนกัน และแสดงเวลา/ผล Sync ล่าสุดในหน้า `/admin/leaves`
 
 ### 🛡️ ความปลอดภัย
 - เพิ่ม `roleProcedure` ตรวจบทบาทฝั่ง server ให้กับ procedure ฝั่ง admin (จัดการผู้ใช้, กลุ่มงาน, ตั้งค่าระบบ, Sync ข้อมูลลา) ก่อนหน้านี้ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกได้

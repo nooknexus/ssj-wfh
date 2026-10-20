@@ -88,6 +88,20 @@ pm2 startup
    ```
 3. บันทึกและออกจาก Editor (ใน `nano` กด `Ctrl + O` -> `Enter` -> `Ctrl + X`) ระบบจะเริ่มนับเวลาทำงานอัตโนมัติ
 
+### 7. ตั้งค่า Sync ใบลาจากระบบลาอัตโนมัติ (Cron Job)
+ระบบดึงใบลาจาก MySQL ของระบบลา (ตั้งค่าการเชื่อมต่อด้วย `LEAVE_DB_*` ใน `.env`) ผ่าน `GET /api/cron/leave-sync` โดยใช้ `CRON_SECRET` เดียวกับข้อ 6
+
+เพิ่มบรรทัดต่อไปนี้ใน `crontab -e` (เปลี่ยน `your-domain.com` และค่า `CRON_SECRET`):
+```bash
+# Sync ใบลาจากระบบลา ทุก 30 นาที ช่วง 07:00-18:00 วันจันทร์-ศุกร์
+*/30 7-18 * * 1-5 curl -s -H "Authorization: Bearer ใส่ค่า_CRON_SECRET_ของคุณที่นี่" "https://your-domain.com/api/cron/leave-sync" > /dev/null 2>&1
+# Sync รอบกลางคืนทุกวัน เวลา 02:00 น.
+0 2 * * * curl -s -H "Authorization: Bearer ใส่ค่า_CRON_SECRET_ของคุณที่นี่" "https://your-domain.com/api/cron/leave-sync" > /dev/null 2>&1
+```
+- ปรับความถี่ได้ตามต้องการ (Sync ทั้งหมดใช้เวลาราว 30 วินาที)
+- ถ้ามีการ Sync ทำงานอยู่ (จาก cron หรือกดปุ่มในหน้า `/admin/leaves`) รอบที่ซ้อนเข้ามาจะถูกปฏิเสธ ไม่ทำงานซ้ำ
+- ดูผล Sync ครั้งล่าสุดได้ที่หน้า `/admin/leaves` ใต้หัวข้อ ("Sync ล่าสุด: ... (อัตโนมัติ)")
+
 ---
 
 ## 🌐 การตั้งค่า Nginx (Reverse Proxy)

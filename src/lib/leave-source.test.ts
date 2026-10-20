@@ -4,6 +4,8 @@ import {
   isExcludedLeaveType,
   mapLeaveStatus,
   normalizeCid,
+  parseLastLeaveSync,
+  summarizeLeaveSync,
   pickExternalName,
   toUtcDateOnly,
   transformRemoteLeave,
@@ -126,5 +128,26 @@ describe("assertSqlIdentifier", () => {
     expect(assertSqlIdentifier("leave_types", "table")).toBe("leave_types");
     expect(() => assertSqlIdentifier("name; DROP TABLE x", "column")).toThrow();
     expect(() => assertSqlIdentifier("", "column")).toThrow();
+  });
+});
+
+describe("parseLastLeaveSync", () => {
+  it("should parse a stored result", () => {
+    const raw = JSON.stringify({ at: "2026-10-20T05:32:00.000Z", trigger: "cron", ok: true, message: "อ่าน 1" });
+    expect(parseLastLeaveSync(raw)).toEqual({ at: "2026-10-20T05:32:00.000Z", trigger: "cron", ok: true, message: "อ่าน 1" });
+  });
+
+  it("should return null for empty or broken values", () => {
+    expect(parseLastLeaveSync(null)).toBeNull();
+    expect(parseLastLeaveSync("not json")).toBeNull();
+    expect(parseLastLeaveSync(JSON.stringify({ at: "yesterday" }))).toBeNull();
+  });
+});
+
+describe("summarizeLeaveSync", () => {
+  it("should only mention failures when there are any", () => {
+    const base = { fetchedCount: 10, createdCount: 2, updatedCount: 7, skippedCount: 1, failedCount: 0 };
+    expect(summarizeLeaveSync(base)).toBe("อ่าน 10 เพิ่มใหม่ 2 อัปเดต 7 ข้าม 1");
+    expect(summarizeLeaveSync({ ...base, failedCount: 3 })).toBe("อ่าน 10 เพิ่มใหม่ 2 อัปเดต 7 ข้าม 1 ผิดพลาด 3");
   });
 });

@@ -19,6 +19,7 @@ export default function AllLeavesPage() {
   const limit = 10;
   const [isSyncing, setIsSyncing] = useState(false);
   const utils = trpc.useUtils();
+  const { data: lastSync } = trpc.leave.getLastSync.useQuery(undefined, { refetchInterval: 60_000 });
 
   const syncMutation = trpc.leave.syncFromSource.useMutation({
     onSuccess: (data) => {
@@ -29,9 +30,11 @@ export default function AllLeavesPage() {
         icon: data.failedCount ? "warning" : "success"
       });
       utils.leave.getAllLeaves.invalidate();
+      utils.leave.getLastSync.invalidate();
     },
     onError: (error) => {
       setIsSyncing(false);
+      utils.leave.getLastSync.invalidate();
       Swal.fire("Sync ล้มเหลว", error.message, "error");
     }
   });
@@ -77,6 +80,14 @@ export default function AllLeavesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">รายการลาทั้งหมด (Synced)</h1>
           <p className="text-slate-500 mt-1">ข้อมูลการลาทั้งหมดที่ซิงค์มาจากระบบลา (MySQL)</p>
+          {lastSync ? (
+            <p className={cn("mt-1 text-xs", lastSync.ok ? "text-slate-500" : "text-rose-600")} title={lastSync.message}>
+              Sync ล่าสุด: {format(new Date(lastSync.at), "d MMM yy HH:mm น.", { locale: th })}
+              {" "}({lastSync.trigger === "cron" ? "อัตโนมัติ" : "กดปุ่ม"}) · {lastSync.ok ? lastSync.message : `ไม่สำเร็จ: ${lastSync.message}`}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-400">ยังไม่เคย Sync</p>
+          )}
         </div>
         <Button 
           className="bg-amber-600 hover:bg-amber-700 gap-2 shadow-sm"

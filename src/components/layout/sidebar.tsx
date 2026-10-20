@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { getRoleSummary } from "@/lib/roles";
+import { CONFERENCE_ADMIN_ROLES, getRoleSummary, hasAnyRole } from "@/lib/roles";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -15,6 +15,7 @@ import {
   Building2,
   ListTodo,
   Menu,
+  Video,
   X
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
@@ -41,6 +42,7 @@ const adminIcons = {
   fileText: FileText,
   settings: Settings,
   clock: Clock,
+  video: Video,
 };
 
 export function Sidebar() {
@@ -49,6 +51,11 @@ export function Sidebar() {
   const { data: session } = useSession();
   const { data: settings } = trpc.systemSetting.getAll.useQuery();
   const adminNavigation = getAdminNavigation(session?.user?.roles);
+  const { data: pendingConferenceCount } = trpc.meeting.pendingCount.useQuery(undefined, {
+    enabled: hasAnyRole(session?.user?.roles, CONFERENCE_ADMIN_ROLES),
+    refetchInterval: 60_000,
+  });
+  const adminBadges: Record<string, number | undefined> = { "/admin/meeting": pendingConferenceCount };
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -163,6 +170,14 @@ export function Sidebar() {
                           )}
                         />
                         {item.name}
+                        {adminBadges[item.href] ? (
+                          <span
+                            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+                            aria-label={`รออนุมัติ ${adminBadges[item.href]} รายการ`}
+                          >
+                            {adminBadges[item.href]}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}

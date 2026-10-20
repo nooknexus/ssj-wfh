@@ -55,7 +55,8 @@ describe("meetingRouter conflicts", () => {
     const result = await caller.getAvailableLinks({ startAt: at("10:00"), endAt: at("11:00"), attendees: 10 });
 
     expect(result[0].availability).toBe("unavailable");
-    expect(findMany.mock.calls[0][0].include.bookings.where).not.toHaveProperty("link_id");
+    expect(findMany.mock.calls[0][0].select.bookings.where).not.toHaveProperty("link_id");
+    expect(findMany.mock.calls[0][0].select).not.toHaveProperty("url");
   });
 
   it("refuses a pending booking that overlaps a pending reservation", async () => {

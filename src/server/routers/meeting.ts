@@ -59,9 +59,19 @@ export const meetingRouter = createTRPCRouter({
       const links = await ctx.db.conferenceLink.findMany({
         where: { is_active: true },
         orderBy: [{ sort_order: "asc" }, { name: "asc" }],
-        include: { bookings: { where: overlappingReservationWhere(input.startAt, input.endAt) } },
+        // ไม่ select url: ผู้ใช้เห็น URL ได้เฉพาะการจองที่อนุมัติแล้วเท่านั้น
+        select: {
+          id: true,
+          name: true,
+          platform: true,
+          max_participants: true,
+          description: true,
+          is_active: true,
+          sort_order: true,
+          bookings: { where: overlappingReservationWhere(input.startAt, input.endAt), select: { start_at: true, end_at: true, status: true } },
+        },
       });
-      return links.map(({ bookings, url: _url, ...link }) => ({
+      return links.map(({ bookings, ...link }) => ({
         ...link,
         availability: getLinkAvailability({
           isActive: link.is_active,

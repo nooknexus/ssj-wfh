@@ -10,7 +10,7 @@ export type AssignableRole = Exclude<AppRole, "staff">;
 
 type AdminNavItem = {
   href: string;
-  icon: "users" | "building2" | "fileText" | "settings" | "clock";
+  icon: "users" | "building2" | "fileText" | "settings" | "clock" | "video";
   name: string;
 };
 
@@ -49,6 +49,7 @@ export const ADMIN_NAV_BY_ROLE: Partial<Record<AppRole, AdminNavItem[]>> = {
     { name: "จัดการกลุ่มงาน", href: "/admin/departments", icon: "building2" },
     { name: "รายการลงเวลา", href: "/admin/attendance", icon: "clock" },
     { name: "รายการลาทั้งหมด", href: "/admin/leaves", icon: "fileText" },
+    { name: "จัดการ Web Conference", href: "/admin/meeting", icon: "video" },
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: "settings" },
   ],
   hradmin: [
@@ -63,6 +64,7 @@ export const ADMIN_NAV_BY_ROLE: Partial<Record<AppRole, AdminNavItem[]>> = {
   itadmin: [
     { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: "users" },
     { name: "จัดการกลุ่มงาน", href: "/admin/departments", icon: "building2" },
+    { name: "จัดการ Web Conference", href: "/admin/meeting", icon: "video" },
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: "settings" },
   ],
 };

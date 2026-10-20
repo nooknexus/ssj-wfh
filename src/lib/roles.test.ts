@@ -69,6 +69,7 @@ describe("getAdminNavigation", () => {
     expect(hrefs).toEqual([
       "/admin/users",
       "/admin/departments",
+      "/admin/meeting",
       "/admin/settings",
       "/admin/attendance",
       "/admin/leaves",

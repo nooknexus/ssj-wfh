@@ -6,6 +6,7 @@ import { documentRouter } from "./document";
 import { userRouter } from "./user";
 import { attendanceRouter } from "./attendance";
 import { wfhRouter } from "./wfh";
+import { attendanceExceptionRouter } from "./attendance-exception";
 import { weeklyPlanRouter } from "./weekly-plan";
 import { departmentRouter } from "./department";
 import { systemSettingRouter } from "./system-setting";
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   attendance: attendanceRouter,
   wfh: wfhRouter,
+  attendanceException: attendanceExceptionRouter,
   weeklyPlan: weeklyPlanRouter,
   department: departmentRouter,
   systemSetting: systemSettingRouter,

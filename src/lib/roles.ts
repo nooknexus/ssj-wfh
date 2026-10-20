@@ -140,10 +140,13 @@ export const canApproveDepartmentRequest = (input: DepartmentApprovalInput): boo
 };
 
 /**
- * ตรวจว่าอนุมัติคำขอ WFH ได้หรือไม่: เฉพาะ leader ของกลุ่มงาน (department_id) เดียวกับผู้ขอเท่านั้น
+ * ตรวจว่าอนุมัติคำขอได้หรือไม่ (WFH, ลา/ไปราชการจากแผนงาน): เฉพาะ leader ของกลุ่มงาน (department_id) เดียวกับผู้ขอเท่านั้น
  * hradmin/superadmin ดูคำขอได้ทุกกลุ่มงานแต่ไม่มีสิทธิ์อนุมัติ เว้นแต่จะเป็น leader ของกลุ่มงานนั้นด้วย
  */
-export const canApproveWfhRequest = (input: DepartmentApprovalInput): boolean =>
+export const canApproveDepartmentLeaderRequest = (input: DepartmentApprovalInput): boolean =>
   hasRole(input.approverRoles, "leader") &&
   input.approverDepartmentId != null &&
   input.approverDepartmentId === input.requesterDepartmentId;
+
+/** ชื่อเดิม คงไว้เพื่อความเข้ากันได้ */
+export const canApproveWfhRequest = canApproveDepartmentLeaderRequest;

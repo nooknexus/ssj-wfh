@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/trpc/client";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
-import { Calendar as CalendarIcon, Save } from "lucide-react";
+import { Briefcase, Calendar as CalendarIcon, CalendarOff, Save } from "lucide-react";
 import { toast } from "sonner";
 import { ModuleGuard } from "@/components/layout/module-guard";
+import { ExceptionDialog } from "@/components/weekly-plan/exception-dialog";
+import { DayExceptionBadge } from "@/components/weekly-plan/day-exception-badge";
+import { validateExceptionDate, type ExceptionType } from "@/lib/attendance-exception";
 
 export default function WeeklyPlanPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -21,7 +24,10 @@ export default function WeeklyPlanPage() {
     friday: "",
   });
 
+  const [exceptionDraft, setExceptionDraft] = useState<{ date: Date; type: ExceptionType } | null>(null);
+
   const { data: weeklyPlan, isLoading } = trpc.weeklyPlan.getPlan.useQuery({ date: currentDate });
+  const { data: exceptions } = trpc.attendanceException.listMine.useQuery({ weekDate: currentDate });
   
   const utils = trpc.useUtils();
   const saveMutation = trpc.weeklyPlan.savePlan.useMutation({
@@ -103,10 +109,18 @@ export default function WeeklyPlanPage() {
           <CardContent className="p-6 space-y-6">
             {weekDays.map((day) => (
               <div key={day.key} className="space-y-2">
-                <label className="font-bold text-slate-800 flex items-center justify-between">
-                  <span>{day.label}</span>
-                  <span className="text-sm font-normal text-slate-500">{format(day.date, "d MMMM yyyy", { locale: th })}</span>
-                </label>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="font-bold text-slate-800 flex items-center gap-3">
+                    <span>{day.label}</span>
+                    <span className="text-sm font-normal text-slate-500">{format(day.date, "d MMMM yyyy", { locale: th })}</span>
+                  </label>
+                  <DayExceptionButtons date={day.date} onRequest={(type) => setExceptionDraft({ date: day.date, type })} />
+                </div>
+                {(exceptions ?? [])
+                  .filter((item) => isSameDay(item.date, day.date))
+                  .map((item) => (
+                    <DayExceptionBadge key={item.id} item={item} canCancel={isEditableDay(day.date)} />
+                  ))}
                 <Textarea 
                   placeholder={`ระบุแผนงานสำหรับ${day.label}...`}
                   className="min-h-[80px] rounded-xl border-slate-200 focus:ring-blue-500 transition-all text-sm"
@@ -118,6 +132,44 @@ export default function WeeklyPlanPage() {
           </CardContent>
         </Card>
       </div>
+      {exceptionDraft ? (
+        <ExceptionDialog
+          key={`${exceptionDraft.type}-${exceptionDraft.date.getTime()}`}
+          date={exceptionDraft.date}
+          type={exceptionDraft.type}
+          onClose={() => setExceptionDraft(null)}
+        />
+      ) : null}
     </ModuleGuard>
   );
 }
+
+const isEditableDay = (date: Date) => validateExceptionDate(date, new Date()) === null;
+
+const DayExceptionButtons = ({ date, onRequest }: { date: Date; onRequest: (type: ExceptionType) => void }) => {
+  const disabled = !isEditableDay(date);
+  return (
+    <div className="flex gap-1.5">
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 border-amber-200 text-amber-700 hover:bg-amber-50"
+        disabled={disabled}
+        onClick={() => onRequest("leave")}
+      >
+        <CalendarOff className="mr-1.5 h-3.5 w-3.5" />
+        ลา
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+        disabled={disabled}
+        onClick={() => onRequest("official_trip")}
+      >
+        <Briefcase className="mr-1.5 h-3.5 w-3.5" />
+        ไปราชการ
+      </Button>
+    </div>
+  );
+};

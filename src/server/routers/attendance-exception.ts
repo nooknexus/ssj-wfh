@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { addDays, endOfDay, startOfDay, startOfWeek } from "date-fns";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { findApprovedExceptionForDay } from "../services/attendance-exception";
 import { HR_ROLES, canApproveDepartmentLeaderRequest, hasAnyRole, hasRole } from "@/lib/roles";
 import {
   ACTIVE_EXCEPTION_STATUSES,
@@ -27,6 +28,11 @@ const fail = (message: string, code: "BAD_REQUEST" | "FORBIDDEN" | "NOT_FOUND" =
   new TRPCError({ code, message });
 
 export const attendanceExceptionRouter = createTRPCRouter({
+  // ข้อยกเว้นที่อนุมัติแล้วของวันนี้ สำหรับการ์ดลงเวลา
+  getTodayApproved: protectedProcedure.query(({ ctx }) =>
+    findApprovedExceptionForDay(ctx.db, Number(ctx.session.user.id), new Date()),
+  ),
+
   // รายการของตัวเองในสัปดาห์ที่เลือก (อาทิตย์–เสาร์) สำหรับหน้าแผนงาน
   listMine: protectedProcedure
     .input(z.object({ weekDate: z.date() }))

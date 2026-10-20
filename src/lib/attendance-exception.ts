@@ -106,3 +106,10 @@ export const resolveExceptionStatus = (
   }
   return { status: exception.type, tasks: note };
 };
+
+/** รวมช่วงเวลาที่อนุมัติแล้วของวันเดียวกัน: มีเต็มวัน หรือมีครบทั้งครึ่งเช้าและครึ่งบ่าย ถือเป็นเต็มวัน */
+export const mergeApprovedPeriods = (periods: readonly DayPeriod[]): DayPeriod | null => {
+  const set = new Set(periods);
+  if (set.has("full") || (set.has("morning") && set.has("afternoon"))) return "full";
+  return periods[0] ?? null;
+};

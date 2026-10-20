@@ -27,6 +27,7 @@ const STATUS_MAP: Record<string, { label: string, color: string }> = {
   late: { label: "สาย", color: "bg-amber-100 text-amber-800" },
   absent: { label: "ขาด", color: "bg-rose-100 text-rose-800" },
   leave: { label: "ลา", color: "bg-blue-100 text-blue-800" },
+  official_trip: { label: "ไปราชการ", color: "bg-indigo-100 text-indigo-800" },
   holiday: { label: "วันหยุด", color: "bg-slate-100 text-slate-800" },
   holiday_work: { label: "มาทำงาน (วันหยุด)", color: "bg-purple-100 text-purple-800" },
 };
@@ -215,6 +216,7 @@ export default function AdminAttendancePage() {
                   <SelectItem value="late">สาย</SelectItem>
                   <SelectItem value="absent">ขาด</SelectItem>
                   <SelectItem value="leave">ลา</SelectItem>
+                  <SelectItem value="official_trip">ไปราชการ</SelectItem>
                   <SelectItem value="holiday">วันหยุด</SelectItem>
                   <SelectItem value="holiday_work">มาทำงาน (วันหยุด)</SelectItem>
                 </SelectContent>

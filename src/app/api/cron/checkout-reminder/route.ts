@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { sendMophAlert, getCheckOutReminderFlexMessage } from "@/lib/moph-alert";
+import { skipsCheckoutReminder } from "@/lib/attendance-exception";
+import { findApprovedExceptionForDay } from "@/server/services/attendance-exception";
 
 // API สำหรับให้ Cron Job ภายนอกยิงเข้ามา (เช่น ตั้งเวลา 17:00 น. ของทุกวันทำการ)
 export async function GET(request: Request) {
@@ -49,7 +51,12 @@ export async function GET(request: Request) {
       },
     });
 
+    // ไม่เตือนผู้ที่ได้รับอนุมัติลา/ไปราชการครึ่งบ่ายหรือเต็มวัน
+    const exceptions = await Promise.all(
+      records.map((r) => findApprovedExceptionForDay(db, r.user_id, today)),
+    );
     const cids = records
+      .filter((_, index) => !skipsCheckoutReminder(exceptions[index]?.period))
       .map(r => r.user.username)
       .filter((cid): cid is string => Boolean(cid && cid.length === 13));
 

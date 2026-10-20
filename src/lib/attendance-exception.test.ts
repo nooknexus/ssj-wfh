@@ -3,6 +3,7 @@ import {
   blocksCheckIn,
   describeException,
   getLateThreshold,
+  mergeApprovedPeriods,
   periodsConflict,
   resolveExceptionStatus,
   skipsCheckoutReminder,
@@ -87,5 +88,17 @@ describe("resolveExceptionStatus", () => {
 describe("describeException", () => {
   it("should omit details when none are given", () => {
     expect(describeException({ type: "leave", period: "afternoon" })).toBe("แจ้งลาครึ่งบ่าย (แผนงาน)");
+  });
+});
+
+describe("mergeApprovedPeriods", () => {
+  it("should treat morning plus afternoon as full day", () => {
+    expect(mergeApprovedPeriods(["morning", "afternoon"])).toBe("full");
+    expect(mergeApprovedPeriods(["afternoon", "full"])).toBe("full");
+  });
+
+  it("should return the single period or null", () => {
+    expect(mergeApprovedPeriods(["morning"])).toBe("morning");
+    expect(mergeApprovedPeriods([])).toBeNull();
   });
 });

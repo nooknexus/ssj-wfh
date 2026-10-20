@@ -1,9 +1,21 @@
 import { z } from "zod";
+import type { PrismaClient } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
 import { HR_ROLES } from "@/lib/roles";
 import { startOfDay, endOfDay, format, addDays, isWeekend, isSameDay } from "date-fns";
 import { getThaiHolidaysForRange, isHoliday } from "../utils/holidays";
 import { sendMophAlert, getCheckInFlexMessage, getCheckOutFlexMessage } from "@/lib/moph-alert";
+import {
+  DEFAULT_AFTERNOON_START,
+  blocksCheckIn,
+  getLateThreshold,
+  mergeApprovedPeriods,
+  resolveExceptionStatus,
+} from "@/lib/attendance-exception";
+import { findApprovedExceptionForDay } from "../services/attendance-exception";
+
+const getTimeSetting = async (db: Pick<PrismaClient, "systemSetting">, key: string, fallback: string) =>
+  (await db.systemSetting.findUnique({ where: { setting_key: key } }))?.setting_value || fallback;
 
 export const attendanceRouter = createTRPCRouter({
   // ตรวจสอบสถานะการลงเวลาของวันนี้
@@ -57,13 +69,22 @@ export const attendanceRouter = createTRPCRouter({
         throw new Error("วันนี้คุณลงเวลาเข้างานไปแล้ว");
       }
 
-      // ตรวจสอบสถานะ (ถ้าหลัง 8:30 ถือว่าสาย - ตรรกะตัวอย่าง)
-      // ยกเว้น onsite จะไม่ถือว่าสาย
+      // ข้อยกเว้นจากแผนงาน: อนุมัติเต็มวันแล้วไม่ต้องลงเวลา ครึ่งเช้าให้เลื่อนเวลานับสายไปช่วงบ่าย
+      const approvedException = await findApprovedExceptionForDay(ctx.db, userId, today);
+      if (blocksCheckIn(approvedException?.period)) {
+        throw new Error("วันนี้ได้รับอนุมัติลาหรือไปราชการเต็มวันแล้ว ไม่ต้องลงเวลา");
+      }
+
+      // ตรวจสอบสถานะ (หลังเวลาเริ่มงานถือว่าสาย) ยกเว้น onsite จะไม่ถือว่าสาย
       let status: "on_time" | "late" = "on_time";
       if (input.workType !== "onsite") {
-        const checkInHour = today.getHours();
-        const checkInMinute = today.getMinutes();
-        if (checkInHour > 8 || (checkInHour === 8 && checkInMinute > 30)) {
+        const threshold = getLateThreshold(
+          today,
+          await getTimeSetting(ctx.db, "working_time", "08:30"),
+          await getTimeSetting(ctx.db, "afternoon_start_time", DEFAULT_AFTERNOON_START),
+          approvedException?.period,
+        );
+        if (today > threshold) {
           status = "late";
         }
       }
@@ -223,7 +244,7 @@ export const attendanceRouter = createTRPCRouter({
         startDate: z.date().optional(),
         endDate: z.date().optional(),
         departmentId: z.number().optional(),
-        status: z.enum(["on_time", "late", "absent", "leave", "holiday", "holiday_work"]).optional(),
+        status: z.enum(["on_time", "late", "absent", "leave", "official_trip", "holiday", "holiday_work"]).optional(),
         workType: z.enum(["wfh", "office", "onsite", "unknown"]).optional(),
         limit: z.number().min(1).max(5000).default(50),
         page: z.number().min(1).default(1),
@@ -277,7 +298,7 @@ export const attendanceRouter = createTRPCRouter({
         where: { setting_key: "working_time" }
       });
       const workingTime = workingTimeSetting?.setting_value || "08:30";
-      const [hour, minute] = workingTime.split(":").map(Number);
+      const afternoonStart = await getTimeSetting(ctx.db, "afternoon_start_time", DEFAULT_AFTERNOON_START);
 
       // ดึงข้อมูลพิกัดสำนักงาน
       const officeLatSetting = await ctx.db.systemSetting.findUnique({ where: { setting_key: "office_lat" } });
@@ -324,16 +345,27 @@ export const attendanceRouter = createTRPCRouter({
         }
       });
 
+      // ข้อยกเว้นการลงเวลา (ลา / ไปราชการ จากแผนงาน) ที่อนุมัติแล้ว ไม่เกี่ยวกับใบลาด้านบน
+      const approvedExceptions = await ctx.db.attendanceException.findMany({
+        where: {
+          status: "approved",
+          date: { gte: startOfDay(startDate), lte: endOfDay(endDate) },
+          ...(departmentId ? { user: { department_id: departmentId } } : {}),
+        },
+      });
+
       const results = [];
       for (const user of users) {
         const userAttendances = attendanceRecords.filter(r => r.user_id === user.id);
         const userLeaves = leaveRequests.filter(l => l.user_id === user.id);
+        const userExceptions = approvedExceptions.filter(e => e.user_id === user.id);
 
         for (const date of validDates) {
           const attendance = userAttendances.find(r => isSameDay(r.date, date));
           
-          const onTimeThreshold = new Date(date);
-          onTimeThreshold.setHours(hour, minute, 0, 0);
+          const dayExceptions = userExceptions.filter(e => isSameDay(e.date, date));
+          const exceptionPeriod = mergeApprovedPeriods(dayExceptions.map(e => e.period));
+          const onTimeThreshold = getLateThreshold(date, workingTime, afternoonStart, exceptionPeriod);
 
           if (attendance) {
             const checkInTime = attendance.check_in_time ? new Date(attendance.check_in_time) : null;
@@ -391,6 +423,18 @@ export const attendanceRouter = createTRPCRouter({
                 check_out_time: null,
                 status: "leave",
                 tasks: `ลา: ${leave.leave_type.name}${leave.reason ? ` - ${leave.reason}` : ''}`,
+              });
+            } else if (exceptionPeriod && !isHoliday(date, holidays)) {
+              const resolved = resolveExceptionStatus({ ...dayExceptions[0], period: exceptionPeriod });
+              results.push({
+                id: `exception-${dayExceptions[0].id}-${date.getTime()}`,
+                user,
+                date,
+                work_type: "-",
+                check_in_time: null,
+                check_out_time: null,
+                status: resolved.status,
+                tasks: resolved.tasks,
               });
             } else if (isHoliday(date, holidays)) {
               // holiday

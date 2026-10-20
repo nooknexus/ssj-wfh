@@ -14,6 +14,7 @@ import { MapPin, Clock, Camera, CheckCircle2, AlertCircle, Lightbulb } from "luc
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { isManualLocationAllowed } from "@/lib/attendance-utils";
+import { DAY_PERIOD_LABELS, EXCEPTION_TYPE_LABELS } from "@/lib/attendance-exception";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +64,7 @@ export function AttendanceCard() {
   const { data: status, isLoading } = trpc.attendance.getTodayStatus.useQuery();
   const { data: wfhRequests, isLoading: isWfhLoading } = trpc.wfh.getUserRequests.useQuery();
   const { data: settings } = trpc.systemSetting.getAll.useQuery();
+  const { data: todayException } = trpc.attendanceException.getTodayApproved.useQuery();
 
   const OFFICE_RADIUS_METERS = useMemo(() => {
     if (settings?.office_radius) {
@@ -294,7 +296,25 @@ export function AttendanceCard() {
         </div>
 
         <CardContent className="p-8 space-y-8 bg-white">
-          {!isCheckedIn ? (
+          {todayException ? (
+            <div className={cn(
+              "flex items-start gap-3 rounded-xl border p-4 text-sm",
+              todayException.period === "full" ? "border-indigo-200 bg-indigo-50 text-indigo-800" : "border-amber-200 bg-amber-50 text-amber-800"
+            )}>
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-bold">
+                  วันนี้ได้รับอนุมัติ{todayException.types.map((type) => EXCEPTION_TYPE_LABELS[type]).join(" / ")} {DAY_PERIOD_LABELS[todayException.period]}
+                </p>
+                <p>
+                  {todayException.period === "full"
+                    ? "ไม่ต้องลงเวลาปฏิบัติงานในวันนี้"
+                    : "ช่วงเวลาที่เหลือยังต้องลงเวลาปฏิบัติงานตามปกติ"}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {todayException?.period === "full" && !isCheckedIn ? null : !isCheckedIn ? (
             <div className="space-y-8">
               <div className="space-y-4">
                 <Label className="text-lg font-bold text-slate-800 flex items-center gap-2">

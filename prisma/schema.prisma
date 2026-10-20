@@ -68,6 +68,24 @@ enum WorkType {
   onsite
 }
 
+enum ExceptionType {
+  leave
+  official_trip
+}
+
+enum DayPeriod {
+  full
+  morning
+  afternoon
+}
+
+enum ExceptionStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
 enum AttendanceStatus {
   on_time
   late
@@ -102,20 +120,22 @@ model User {
   updated_at DateTime @updatedAt
 
   // Relations
-  leave_quotas         LeaveQuota[]
-  leave_requests       LeaveRequest[]
-  step1_approvals      LeaveRequest[]       @relation("Step1Approver")
-  step2_approvals      LeaveRequest[]       @relation("Step2Approver")
-  meeting_bookings     MeetingBooking[]     @relation("BookingUser")
-  approved_bookings    MeetingBooking[]     @relation("BookingApprover")
-  assigned_docs        Document[]           @relation("AssignedTo")
-  assigned_by_docs     Document[]           @relation("AssignedBy")
-  created_docs         Document[]           @relation("DocCreatedBy")
-  uploaded_attachments DocumentAttachment[]
-  attendance_records   AttendanceRecord[]
-  weekly_plans         WeeklyPlan[]
-  wfh_requests         WfhRequest[]         @relation("WfhUser")
-  approved_wfh         WfhRequest[]         @relation("WfhApprover")
+  leave_quotas          LeaveQuota[]
+  leave_requests        LeaveRequest[]
+  step1_approvals       LeaveRequest[]        @relation("Step1Approver")
+  step2_approvals       LeaveRequest[]        @relation("Step2Approver")
+  meeting_bookings      MeetingBooking[]      @relation("BookingUser")
+  approved_bookings     MeetingBooking[]      @relation("BookingApprover")
+  assigned_docs         Document[]            @relation("AssignedTo")
+  assigned_by_docs      Document[]            @relation("AssignedBy")
+  created_docs          Document[]            @relation("DocCreatedBy")
+  uploaded_attachments  DocumentAttachment[]
+  attendance_records    AttendanceRecord[]
+  weekly_plans          WeeklyPlan[]
+  wfh_requests          WfhRequest[]          @relation("WfhUser")
+  approved_wfh          WfhRequest[]          @relation("WfhApprover")
+  attendance_exceptions AttendanceException[] @relation("ExceptionUser")
+  approved_exceptions   AttendanceException[] @relation("ExceptionApprover")
 
   @@map("users")
 }
@@ -383,4 +403,28 @@ model SystemSetting {
   updated_at DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+/// ข้อยกเว้นการลงเวลา (แจ้งลา / ไปราชการ) จากหน้าแผนงานรายสัปดาห์ ไม่เกี่ยวกับ leave_requests
+model AttendanceException {
+  id             Int             @id @default(autoincrement())
+  user_id        Int
+  user           User            @relation("ExceptionUser", fields: [user_id], references: [id])
+  date           DateTime        @db.Date
+  type           ExceptionType
+  period         DayPeriod       @default(full)
+  reason         String?         @db.Text
+  location       String?         @db.VarChar(255)
+  attachment_url String?         @db.VarChar(500)
+  status         ExceptionStatus @default(pending)
+  approved_by    Int?
+  approver       User?           @relation("ExceptionApprover", fields: [approved_by], references: [id])
+  approved_at    DateTime?
+  reject_reason  String?         @db.Text
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+
+  @@index([user_id, date])
+  @@index([date, status])
+  @@map("attendance_exceptions")
 }

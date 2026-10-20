@@ -53,7 +53,8 @@ describe("classifyLeaveType", () => {
     expect(classifyLeaveType("ลาพักผ่อน")).toBe("vacation");
     expect(classifyLeaveType("ลาป่วย")).toBe("sick");
     expect(classifyLeaveType("ลากิจ")).toBe("personal");
-    expect(classifyLeaveType("ลาคลอดบุตร")).toBe("other");
+    expect(classifyLeaveType("ลาคลอดบุตร")).toBe("personal");
+    expect(classifyLeaveType("ลาอุปสมบท")).toBe("personal");
   });
 });
 
@@ -83,7 +84,7 @@ describe("buildMonthlyReportRow", () => {
     expect(row.columns.noCheckIn.days).not.toContain(1);
   });
 
-  it("should count leaves by type, including half days and leaves crossing months", () => {
+  it("should count leaves by type, including half days, other types and leaves crossing months", () => {
     const row = buildMonthlyReportRow(base({
       leaves: [
         { start_date: dbDate(9, 29), end_date: dbDate(10, 2), total_days: 4, leaveTypeName: "ลาพักผ่อน" },
@@ -94,9 +95,9 @@ describe("buildMonthlyReportRow", () => {
     }));
     expect(row.columns.vacation).toEqual({ days: [1, 2], total: 2 });
     expect(row.columns.sick).toEqual({ days: [5, 6], total: 2 });
-    expect(row.columns.personal).toEqual({ days: [7], total: 0.5 });
+    expect(row.columns.personal).toEqual({ days: [7, 12], total: 1.5 }); // ลากิจครึ่งวัน + ลาคลอดบุตร (ลาประเภทอื่นนับในช่องลากิจ)
     for (const day of [1, 2, 5, 6, 7, 12]) expect(row.columns.noCheckIn.days).not.toContain(day);
-    expect(row.remark).toBe("ลาคลอดบุตร 12");
+    expect(row.remark).toBe("");
   });
 
   it("should handle official trips and weekly-plan leave notices", () => {

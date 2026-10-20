@@ -38,13 +38,12 @@ export const formatDayList = (days: readonly number[]): string => {
   return parts.join(", ");
 };
 
-/** ชื่อประเภทลา → คอลัมน์ในฟอร์ม ประเภทอื่นไปอยู่ในหมายเหตุ */
-export const classifyLeaveType = (name: string | null | undefined): "vacation" | "sick" | "personal" | "other" => {
+/** ชื่อประเภทลา → คอลัมน์ในฟอร์ม ลาประเภทอื่น (เช่น ลาคลอด ลาอุปสมบท) นับรวมในช่องลากิจ */
+export const classifyLeaveType = (name: string | null | undefined): "vacation" | "sick" | "personal" => {
   const text = (name ?? "").replace(/\s+/g, "");
   if (text.includes("พักผ่อน")) return "vacation";
   if (text.includes("ป่วย")) return "sick";
-  if (text.includes("กิจ")) return "personal";
-  return "other";
+  return "personal";
 };
 
 export type ReportAttendance = {
@@ -123,7 +122,6 @@ const exceptionValue = (period: DayPeriod) => (period === "full" ? 1 : 0.5);
 export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportRow => {
   const workingDays = workingDaysOfMonth(input);
   const maps = Object.fromEntries(REPORT_COLUMNS.map((column) => [column, new Map<number, number>()])) as Record<ReportColumn, Map<number, number>>;
-  const otherLeave = new Map<string, number[]>();
   const planLeaveDays: number[] = [];
   const noCheckOutDays: number[] = [];
   const covered = new Set<number>();
@@ -132,8 +130,7 @@ export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportR
     const column = classifyLeaveType(leave.leaveTypeName);
     for (const { day, value } of leaveDaysInMonth(leave, workingDays)) {
       covered.add(day);
-      if (column === "other") otherLeave.set(leave.leaveTypeName, [...(otherLeave.get(leave.leaveTypeName) ?? []), day]);
-      else addDays(maps[column], day, value);
+      addDays(maps[column], day, value);
     }
   }
 
@@ -168,15 +165,11 @@ export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportR
     addDays(maps.noCheckIn, day, period ? 0.5 : 1);
   }
 
-  const remarks = [
-    ...[...otherLeave.entries()].map(([name, days]) => `${name} ${formatDayList(days)}`),
-    ...(planLeaveDays.length ? [`แจ้งลา(แผนงาน) ${formatDayList(planLeaveDays)}`] : []),
-  ];
 
   return {
     columns: Object.fromEntries(REPORT_COLUMNS.map((column) => [column, toCell(maps[column])])) as Record<ReportColumn, ReportCell>,
     noCheckOutDays: noCheckOutDays.sort((a, b) => a - b),
-    remark: remarks.join(" / "),
+    remark: planLeaveDays.length ? `แจ้งลา(แผนงาน) ${formatDayList(planLeaveDays)}` : "",
   };
 };
 

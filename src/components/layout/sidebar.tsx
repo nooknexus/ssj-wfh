@@ -24,6 +24,7 @@ import { trpc } from "@/trpc/client";
 import Image from "next/image";
 import logo from "./logo.png";
 import { useState, useEffect } from "react";
+import { filterEnabledNavigation } from "@/lib/modules";
 
 const navigationItems = [
   { name: "แดชบอร์ด", href: "/", icon: LayoutDashboard, key: "dashboard" },
@@ -54,7 +55,8 @@ export function Sidebar() {
     setIsOpen(false);
   }, [pathname]);
 
-  const navigation = navigationItems;
+  // ซ่อนเมนูของโมดูลที่ปิดไว้ในหน้าตั้งค่าระบบ
+  const navigation = filterEnabledNavigation(navigationItems, settings);
 
   const user = session?.user;
   const displayName = user?.name_th || user?.name || "ไม่ระบุชื่อ";

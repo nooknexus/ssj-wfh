@@ -6,6 +6,7 @@ import { Hammer, Home } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { isModuleEnabled } from "@/lib/modules";
 
 interface ModuleGuardProps {
   moduleKey: string;
@@ -23,7 +24,7 @@ export function ModuleGuard({ moduleKey, children }: ModuleGuardProps) {
     );
   }
 
-  const isEnabled = settings?.[moduleKey] !== "false";
+  const isEnabled = isModuleEnabled(settings, moduleKey);
 
   if (!isEnabled) {
     return (

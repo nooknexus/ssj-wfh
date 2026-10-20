@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   blocksAvailability,
   combineDateTime,
+  getDefaultBookingRange,
   getHalfHourSlots,
   getLinkAvailability,
   intervalsOverlap,
@@ -72,5 +73,21 @@ describe("combineDateTime", () => {
   it("should reject malformed input", () => {
     expect(combineDateTime("21/10/2099", "13:30")).toBeNull();
     expect(combineDateTime("2099-10-21", "1:30")).toBeNull();
+  });
+});
+
+describe("getDefaultBookingRange", () => {
+  const now = new Date(2099, 9, 21, 14, 10);
+
+  it("should start at the next half-hour slot when booking today", () => {
+    expect(getDefaultBookingRange("2099-10-21", now)).toEqual({ date: "2099-10-21", start: "14:30", end: "15:30" });
+  });
+
+  it("should use 09:00-10:00 for other days", () => {
+    expect(getDefaultBookingRange("2099-10-25", now)).toEqual({ date: "2099-10-25", start: "09:00", end: "10:00" });
+  });
+
+  it("should move to tomorrow when today has no full hour left", () => {
+    expect(getDefaultBookingRange("2099-10-21", new Date(2099, 9, 21, 19, 5))).toEqual({ date: "2099-10-22", start: "09:00", end: "10:00" });
   });
 });

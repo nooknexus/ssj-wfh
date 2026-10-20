@@ -81,3 +81,28 @@ export const combineDateTime = (date: string, time: string): Date | null => {
   const value = new Date(`${date}T${time}:00`);
   return Number.isNaN(value.getTime()) ? null : value;
 };
+
+const pad = (value: number) => String(value).padStart(2, "0");
+const toDateString = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+/**
+ * ค่าเริ่มต้นของฟอร์มจอง: ถ้าเป็นวันนี้ใช้ช่วง 30 นาทีถัดจากเวลาปัจจุบัน (ยาว 1 ชั่วโมง)
+ * ถ้าวันนี้เลยช่วงจองแล้วให้เลื่อนเป็นพรุ่งนี้ 09:00 และวันอื่นใช้ 09:00–10:00
+ */
+export const getDefaultBookingRange = (date: string, now: Date): { date: string; start: string; end: string } => {
+  const slots = getHalfHourSlots();
+  const today = toDateString(now);
+  if (date !== today) return { date, start: "09:00", end: "10:00" };
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const index = slots.findIndex((slot) => {
+    const [hour, minute] = slot.split(":").map(Number);
+    return hour * 60 + minute > nowMinutes;
+  });
+  // ต้องเหลืออย่างน้อย 1 ชั่วโมง (2 ช่อง) ก่อนช่วงสุดท้าย
+  if (index === -1 || index + 2 >= slots.length) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return { date: toDateString(tomorrow), start: "09:00", end: "10:00" };
+  }
+  return { date, start: slots[index], end: slots[index + 2] };
+};

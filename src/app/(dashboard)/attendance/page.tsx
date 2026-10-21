@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Plus, FileText, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Plus, FileText, Calendar as CalendarIcon, Clock, Info, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ModuleGuard } from "@/components/layout/module-guard";
 import { ApprovalsButton } from "@/components/attendance/approvals-button";
@@ -40,6 +40,27 @@ export default function AttendancePage() {
         </div>
 
         <div className="grid gap-8">
+          {/* แจ้งเตือน: ไปราชการ/ลา ให้แจ้งที่แผนงานล่วงหน้ารายสัปดาห์ */}
+          <Link
+            href="/weekly-plan"
+            className="group flex items-center gap-4 p-4 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100/70 hover:border-amber-300 transition-colors"
+          >
+            <div className="p-3 rounded-xl bg-white text-amber-600 shadow-sm shrink-0">
+              <Info className="w-5 h-5"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-amber-900">กรณีไปราชการหรือลา</p>
+              <p className="text-xs text-amber-800 leading-relaxed mt-0.5">
+                กรุณาแจ้งที่เมนู <span className="font-semibold">แผนงานล่วงหน้ารายสัปดาห์</span>
+              </p>
+            </div>
+            <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-amber-700 whitespace-nowrap group-hover:gap-2 transition-all">
+              ไปที่แผนงาน
+              <ChevronRight className="w-4 h-4"/>
+            </span>
+            <ChevronRight className="sm:hidden w-5 h-5 text-amber-600 shrink-0"/>
+          </Link>
+
           {/* Attendance Check-in/out Card */}
           <AttendanceCard/>
 

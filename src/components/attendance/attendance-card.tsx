@@ -261,10 +261,10 @@ export function AttendanceCard() {
   const isCheckedIn = !!status?.check_in_time;
   const isCheckedOut = !!status?.check_out_time;
 
-  const workTypes: { id: WorkType; label: string; thLabel: string; icon: React.ReactNode; color: string }[] = [
-    { id: "office", label: "Office", thLabel: "(เข้าสำนักงาน)", icon: <Clock className="w-5 h-5" />, color: "border-blue-500 text-blue-600 bg-blue-50" },
-    { id: "wfh", label: "WFH", thLabel: "(ปฏิบัติงานที่บ้าน)", icon: <MapPin className="w-5 h-5" />, color: "border-purple-500 text-purple-600 bg-purple-50" },
-    { id: "onsite", label: "Onsite", thLabel: "(ลงพื้นที่)", icon: <MapPin className="w-5 h-5" />, color: "border-orange-500 text-orange-600 bg-orange-50" },
+  const workTypes: { id: WorkType; label: string; thLabel: string; icon: React.ReactNode; color: string; idleColor: string; iconBg: string }[] = [
+    { id: "office", label: "Office", thLabel: "(เข้าสำนักงาน)", icon: <Clock className="w-5 h-5" />, color: "border-blue-500 text-blue-600 bg-blue-50", idleColor: "border-blue-200 text-blue-600 bg-white hover:border-blue-400 hover:bg-blue-50/60", iconBg: "bg-blue-50" },
+    { id: "onsite", label: "Onsite", thLabel: "(ลงพื้นที่)", icon: <MapPin className="w-5 h-5" />, color: "border-orange-500 text-orange-600 bg-orange-50", idleColor: "border-orange-200 text-orange-600 bg-white hover:border-orange-400 hover:bg-orange-50/60", iconBg: "bg-orange-50" },
+    { id: "wfh", label: "WFH", thLabel: "(ปฏิบัติงานที่บ้าน)", icon: <MapPin className="w-5 h-5" />, color: "border-purple-500 text-purple-600 bg-purple-50", idleColor: "border-purple-200 text-purple-600 bg-white hover:border-purple-400 hover:bg-purple-50/60", iconBg: "bg-purple-50" },
   ];
 
   return (
@@ -336,16 +336,18 @@ export function AttendanceCard() {
                         }}
                         className={cn(
                           "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 gap-2 group relative",
-                          workType === type.id
-                            ? `${type.color} shadow-md scale-105`
-                            : "border-slate-100 text-slate-400 hover:border-slate-200 hover:bg-slate-50",
-                          isDisabled && "opacity-50 cursor-not-allowed hover:border-slate-100 hover:bg-transparent"
+                          isDisabled
+                            ? "border-slate-100 text-slate-400 opacity-60 cursor-not-allowed"
+                            : workType === type.id
+                              ? `${type.color} shadow-md scale-105`
+                              : `${type.idleColor} shadow-sm`
                         )}
                       >
                         <div className={cn(
                           "p-3 rounded-xl transition-colors",
-                          workType === type.id ? "bg-white shadow-sm" : "bg-slate-50",
-                          isDisabled && "bg-slate-100"
+                          isDisabled
+                            ? "bg-slate-100"
+                            : workType === type.id ? "bg-white shadow-sm" : type.iconBg
                         )}>
                           {type.icon}
                         </div>
@@ -434,6 +436,16 @@ export function AttendanceCard() {
                         </Button>
                       </div>
                     </div>
+
+                    {location && workType === "office" && !isInArea && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-blue-50 border border-blue-100 text-blue-800">
+                        <Lightbulb className="w-4 h-4 mt-0.5 shrink-0 text-blue-500" />
+                        <div className="text-xs leading-relaxed">
+                          <p className="font-bold">หากคุณอยู่ที่สำนักงานแล้ว แต่ระบบแสดงว่าอยู่นอกพื้นที่</p>
+                          <p>ให้ปิดการใช้งาน Wi-Fi และตรวจสอบว่าได้เปิด GPS (ตำแหน่ง) ในสมาร์ทโฟนแล้ว จากนั้นกด &quot;รีโหลด&quot; เพื่อดึงพิกัดใหม่</p>
+                        </div>
+                      </div>
+                    )}
 
                     {location && (
                       <div className="rounded-2xl overflow-hidden shadow-inner border border-slate-100 z-0 h-[280px]">

@@ -31,55 +31,8 @@ export const dashboardRouter = createTRPCRouter({
       }
     });
 
-    // 2. Leave Quota (Vacation - id: 1 assumed or find by code 'vacation')
-    const vacationQuota = await ctx.db.leaveQuota.findFirst({
-      where: {
-        user_id: userId,
-        leave_type: {
-          code: "vacation",
-        },
-      },
-    });
-
-    // 3. Today Meetings
-    const todayMeetings = await ctx.db.meetingBooking.count({
-      where: {
-        start_at: {
-          gte: start,
-          lte: end,
-        },
-        status: "approved",
-        OR: [
-          { user_id: userId },
-          { attendees: { gt: 0 } }, // Simplification for demo
-        ],
-      },
-    });
-
-    // 4. Pending Tasks
-    // - Leave requests waiting for this user if they are approver
-    // - Documents assigned to this user
-    const pendingLeaves = await ctx.db.leaveRequest.count({
-      where: {
-        OR: [
-          { step1_by: userId, step1_status: "pending" },
-          { step2_by: userId, step2_status: "pending" },
-        ],
-      },
-    });
-
-    const pendingDocs = await ctx.db.document.count({
-      where: {
-        assigned_to: userId,
-        status: { in: ["new", "pending", "in_progress"] },
-      },
-    });
-
     return {
       attendance: todayAttendance,
-      vacationDaysLeft: vacationQuota ? Number(vacationQuota.total_days) - Number(vacationQuota.used_days) : 0,
-      todayMeetings,
-      pendingTasks: pendingLeaves + pendingDocs,
     };
   }),
 
@@ -102,24 +55,9 @@ export const dashboardRouter = createTRPCRouter({
       take: 3,
     });
 
-    const recentBookings = await ctx.db.meetingBooking.findMany({
-      where: { user_id: userId },
-      include: { link: { select: { name: true, platform: true } } },
-      orderBy: { start_at: "desc" },
-      take: 3,
-    });
-
-    const recentDocs = await ctx.db.document.findMany({
-      where: { assigned_to: userId },
-      orderBy: { created_at: "desc" },
-      take: 3,
-    });
-
     return {
       attendance: recentAttendance,
       leaves: recentLeaves,
-      bookings: recentBookings,
-      documents: recentDocs,
     };
   }),
 });

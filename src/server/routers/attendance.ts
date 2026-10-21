@@ -16,6 +16,7 @@ import {
 import { findApprovedExceptionForDay } from "../services/attendance-exception";
 import { buildMonthlyAttendanceReport } from "../services/monthly-attendance-report";
 import { parseReportMonth } from "@/lib/attendance-report";
+import { summarizeMonthToDate, summarizeTodayAttendance } from "@/lib/attendance-overview";
 
 const getTimeSetting = async (db: Pick<PrismaClient, "systemSetting">, key: string, fallback: string) =>
   (await db.systemSetting.findUnique({ where: { setting_key: key } }))?.setting_value || fallback;
@@ -239,6 +240,115 @@ export const attendanceRouter = createTRPCRouter({
         take: input.limit,
       });
     }),
+
+  // ภาพรวมการลงเวลาวันนี้สำหรับ Dashboard (หัวหน้างานเห็นเฉพาะกลุ่มงานตัวเอง)
+  getTodayOverview: roleProcedure(ATTENDANCE_REPORT_ROLES).query(async ({ ctx }) => {
+    const currentUser = await ctx.db.user.findUnique({
+      where: { id: Number(ctx.session.user.id) },
+      select: { department_id: true },
+    });
+    const scope = resolveAttendanceReportScope({
+      roles: ctx.session.user.roles,
+      ownDepartmentId: currentUser?.department_id,
+    });
+    if ("error" in scope) {
+      throw new TRPCError({ code: "FORBIDDEN", message: scope.error });
+    }
+    const inScope = scope.departmentId ? { department_id: scope.departmentId } : {};
+
+    const today = new Date();
+    const start = startOfDay(today);
+    const end = endOfDay(today);
+
+    const [users, records, leaves, exceptions, holidays, workingTime, afternoonStart, officeLat, officeLng, officeRadius] =
+      await Promise.all([
+        ctx.db.user.findMany({ where: { status: "active", ...inScope }, select: { id: true } }),
+        ctx.db.attendanceRecord.findMany({
+          where: { date: { gte: start, lte: end }, user: { status: "active", ...inScope } },
+          select: { user_id: true, work_type: true, check_in_time: true, check_in_lat: true, check_in_lng: true },
+        }),
+        ctx.db.leaveRequest.findMany({
+          where: {
+            start_date: { lte: end },
+            end_date: { gte: start },
+            step2_status: "approved",
+            user: { status: "active", ...inScope },
+          },
+          select: { user_id: true },
+        }),
+        ctx.db.attendanceException.findMany({
+          where: { status: "approved", date: { gte: start, lte: end }, user: { status: "active", ...inScope } },
+          select: { user_id: true, period: true },
+        }),
+        getThaiHolidaysForRange(today, today),
+        getTimeSetting(ctx.db, "working_time", "08:30"),
+        getTimeSetting(ctx.db, "afternoon_start_time", DEFAULT_AFTERNOON_START),
+        getTimeSetting(ctx.db, "office_lat", "16.8173716"),
+        getTimeSetting(ctx.db, "office_lng", "100.2584649"),
+        getTimeSetting(ctx.db, "office_radius", "100"),
+      ]);
+
+    return summarizeTodayAttendance({
+      userIds: users.map((user) => user.id),
+      records: records.map((record) => ({
+        ...record,
+        check_in_lat: record.check_in_lat == null ? null : Number(record.check_in_lat),
+        check_in_lng: record.check_in_lng == null ? null : Number(record.check_in_lng),
+      })),
+      onLeaveUserIds: leaves.flatMap((leave) => (leave.user_id == null ? [] : [leave.user_id])),
+      exceptions,
+      date: today,
+      workingTime,
+      afternoonStart,
+      isHoliday: isWeekend(today) || isHoliday(today, holidays),
+      office: { lat: parseFloat(officeLat), lng: parseFloat(officeLng), radius: parseInt(officeRadius) || 100 },
+    });
+  }),
+
+  // สรุปการลงเวลาของตัวเองตั้งแต่ต้นเดือนถึงวันนี้ สำหรับ Dashboard ของพนักงาน
+  getMyMonthOverview: protectedProcedure.query(async ({ ctx }) => {
+    const userId = Number(ctx.session.user.id);
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = endOfDay(today);
+
+    const [records, leaves, exceptions, holidays, workingTime, afternoonStart, officeLat, officeLng, officeRadius] =
+      await Promise.all([
+        ctx.db.attendanceRecord.findMany({
+          where: { user_id: userId, date: { gte: monthStart, lte: end } },
+          select: { user_id: true, work_type: true, check_in_time: true, check_in_lat: true, check_in_lng: true },
+        }),
+        ctx.db.leaveRequest.findMany({
+          where: { user_id: userId, step2_status: "approved", start_date: { lte: end }, end_date: { gte: monthStart } },
+          select: { start_date: true, end_date: true },
+        }),
+        ctx.db.attendanceException.findMany({
+          where: { user_id: userId, status: "approved", date: { gte: monthStart, lte: end } },
+          select: { date: true, period: true },
+        }),
+        getThaiHolidaysForRange(monthStart, today),
+        getTimeSetting(ctx.db, "working_time", "08:30"),
+        getTimeSetting(ctx.db, "afternoon_start_time", DEFAULT_AFTERNOON_START),
+        getTimeSetting(ctx.db, "office_lat", "16.8173716"),
+        getTimeSetting(ctx.db, "office_lng", "100.2584649"),
+        getTimeSetting(ctx.db, "office_radius", "100"),
+      ]);
+
+    return summarizeMonthToDate({
+      today,
+      records: records.map((record) => ({
+        ...record,
+        check_in_lat: record.check_in_lat == null ? null : Number(record.check_in_lat),
+        check_in_lng: record.check_in_lng == null ? null : Number(record.check_in_lng),
+      })),
+      leaves,
+      exceptions,
+      isHolidayDate: (date) => isHoliday(date, holidays),
+      workingTime,
+      afternoonStart,
+      office: { lat: parseFloat(officeLat), lng: parseFloat(officeLng), radius: parseInt(officeRadius) || 100 },
+    });
+  }),
 
   // ดึงข้อมูลประวัติการลงเวลาสำหรับผู้ดูแลระบบ
   getAdminRecords: roleProcedure(ATTENDANCE_REPORT_ROLES)

@@ -543,7 +543,7 @@ export function AttendanceCard() {
                   </div>
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>เข้างาน {format(new Date(status!.check_in_time!), "HH:mm น.")}</span>
-                    <span>ออกงานได้ {format(workProgress.endTime, "HH:mm น.")} (ครบ {workProgress.requiredHours} ชม.)</span>
+                    <span>ครบ {workProgress.requiredHours} ชม. เวลา {format(workProgress.endTime, "HH:mm น.")}</span>
                   </div>
                 </div>
               )}

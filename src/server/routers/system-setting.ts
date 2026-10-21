@@ -14,7 +14,6 @@ export const systemSettingRouter = createTRPCRouter({
     // Define defaults for known modules
     const defaults: Record<string, string> = {
       module_attendance: "true",
-      module_weekly_plan: "true",
       module_leave: "true",
       module_meeting: "true",
       module_document: "true",

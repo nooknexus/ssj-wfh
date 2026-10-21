@@ -77,7 +77,7 @@ export default function WeeklyPlanPage() {
   if (isLoading) return <div className="flex justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
 
   return (
-    <ModuleGuard moduleKey="module_weekly_plan">
+    <ModuleGuard moduleKey="module_attendance">
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* ... existing content ... */}
         <div className="flex items-center justify-between">

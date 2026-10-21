@@ -30,7 +30,7 @@ import { filterEnabledNavigation } from "@/lib/modules";
 const navigationItems = [
   { name: "แดชบอร์ด", href: "/", icon: LayoutDashboard, key: "dashboard" },
   { name: "ระบบลงเวลาปฏิบัติงาน", href: "/attendance", icon: Clock, key: "module_attendance" },
-  { name: "แผนงานล่วงหน้ารายสัปดาห์", href: "/weekly-plan", icon: ListTodo, key: "module_weekly_plan" },
+  { name: "แผนงานล่วงหน้ารายสัปดาห์", href: "/weekly-plan", icon: ListTodo, key: "module_attendance" },
   { name: "ระบบลาออนไลน์", href: "/leave", icon: CalendarDays, key: "module_leave" },
   { name: "ระบบจองWeb Conference", href: "/meeting", icon: Users, key: "module_meeting" },
   { name: "ระบบงานสารบรรณกลุ่มงาน", href: "/document", icon: FileText, key: "module_document" },

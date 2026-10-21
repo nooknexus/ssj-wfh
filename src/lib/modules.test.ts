@@ -23,6 +23,16 @@ describe("filterEnabledNavigation", () => {
     ]);
   });
 
+  it("should toggle every menu that shares a module key together", () => {
+    const shared = [
+      { key: "dashboard", href: "/" },
+      { key: "module_attendance", href: "/attendance" },
+      { key: "module_attendance", href: "/weekly-plan" },
+    ];
+    expect(filterEnabledNavigation(shared, { module_attendance: "false" }).map((item) => item.href)).toEqual(["/"]);
+    expect(filterEnabledNavigation(shared, { module_attendance: "true" })).toHaveLength(3);
+  });
+
   it("should show everything while settings are loading", () => {
     expect(filterEnabledNavigation(items, undefined)).toHaveLength(3);
   });

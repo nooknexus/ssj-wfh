@@ -158,8 +158,7 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {[
-              { key: "module_attendance", label: "ระบบลงเวลาปฏิบัติงาน" },
-              { key: "module_weekly_plan", label: "แผนงานล่วงหน้ารายสัปดาห์" },
+              { key: "module_attendance", label: "ระบบลงเวลาปฏิบัติงาน และแผนงานล่วงหน้ารายสัปดาห์" },
               { key: "module_leave", label: "ระบบลาออนไลน์" },
               { key: "module_meeting", label: "ระบบจอง Web Conference" },
               { key: "module_document", label: "ระบบงานสารบรรณกลุ่มงาน" },

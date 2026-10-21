@@ -13,7 +13,7 @@ import { startOfDay } from "date-fns";
 import { MapPin, Clock, Camera, CheckCircle2, AlertCircle, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-import { isManualLocationAllowed } from "@/lib/attendance-utils";
+import { formatWorkedDuration, getWorkProgress, isManualLocationAllowed } from "@/lib/attendance-utils";
 import { DAY_PERIOD_LABELS, EXCEPTION_TYPE_LABELS } from "@/lib/attendance-exception";
 import {
   Dialog,
@@ -260,6 +260,13 @@ export function AttendanceCard() {
 
   const isCheckedIn = !!status?.check_in_time;
   const isCheckedOut = !!status?.check_out_time;
+  const workProgress = status?.check_in_time
+    ? getWorkProgress(new Date(status.check_in_time), currentTime, {
+        workingTime: settings?.working_time,
+        afternoonStart: settings?.afternoon_start_time,
+        exceptionPeriod: todayException?.period,
+      })
+    : null;
 
   const workTypes: { id: WorkType; label: string; thLabel: string; icon: React.ReactNode; color: string; idleColor: string; iconBg: string }[] = [
     { id: "office", label: "Office", thLabel: "(เข้าสำนักงาน)", icon: <Clock className="w-5 h-5" />, color: "border-blue-500 text-blue-600 bg-blue-50", idleColor: "border-blue-200 text-blue-600 bg-white hover:border-blue-400 hover:bg-blue-50/60", iconBg: "bg-blue-50" },
@@ -513,6 +520,33 @@ export function AttendanceCard() {
                   </div>
                 </div>
               </div>
+
+              {workProgress && (
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <p className="text-sm text-slate-600">ทำงานมาแล้ว</p>
+                    <p className="text-2xl font-bold text-slate-900 tabular-nums">
+                      {formatWorkedDuration(workProgress.workedMinutes)}
+                    </p>
+                  </div>
+                  <div
+                    className="h-2.5 rounded-full bg-slate-200 overflow-hidden"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(workProgress.percent)}
+                  >
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400 transition-[width] duration-700"
+                      style={{ width: `${workProgress.percent}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>เข้างาน {format(new Date(status!.check_in_time!), "HH:mm น.")}</span>
+                    <span>ออกงานได้ {format(workProgress.endTime, "HH:mm น.")} (ครบ {workProgress.requiredHours} ชม.)</span>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

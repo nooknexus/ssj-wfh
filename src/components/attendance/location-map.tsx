@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents, Circle, Popup, Tooltip, useMap } from "react-leaflet";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { TileLayer, Marker, useMapEvents, Circle, Popup, Tooltip, useMap } from "react-leaflet";
+import { LeafletContext, createLeafletContext, type LeafletContextInterface } from "@react-leaflet/core";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,45 @@ function LocationMarker({ position, setPosition }: { position: L.LatLng | null; 
     <Marker position={position} icon={userIcon}>
        <Tooltip permanent direction="right" offset={[10, 0]}>ตำแหน่งของคุณ</Tooltip>
     </Marker>
+  );
+}
+
+// แทน MapContainer ของ react-leaflet v5 ที่สร้าง map ครั้งเดียวใน ref callback
+// แต่ remove() ใน effect cleanup — เมื่อ React 19 Strict Mode mount effect ซ้ำ
+// layer ลูกจะถูก add เข้า map ที่ถูก remove ไปแล้ว (ไม่มี pane) จนเกิด
+// "Cannot read properties of undefined (reading 'appendChild')"
+// ที่นี่จึงสร้างและทำลาย map คู่กันใน effect เดียว
+function SafeMapContainer({
+  center,
+  zoom,
+  style,
+  children,
+  ...options
+}: L.MapOptions & {
+  center: L.LatLngExpression;
+  zoom: number;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [context, setContext] = useState<LeafletContextInterface | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const map = L.map(containerRef.current, options).setView(center, zoom);
+    setContext(createLeafletContext(map));
+    return () => {
+      setContext(null);
+      map.remove();
+    };
+    // map options ใช้แค่ตอนสร้าง (เหมือน MapContainer) เปลี่ยนค่าให้ใช้ key แทน
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div ref={containerRef} style={style}>
+      {context && <LeafletContext value={context}>{children}</LeafletContext>}
+    </div>
   );
 }
 
@@ -129,7 +169,7 @@ export default function LocationMap({
   return (
     <div className="flex flex-col gap-4">
       <div className={readOnly ? "h-[300px] w-full rounded-xl overflow-hidden relative z-0 border border-slate-200 shadow-inner" : "h-[350px] w-full rounded-md overflow-hidden relative z-0 shadow-inner"}>
-        <MapContainer
+        <SafeMapContainer
           key={readOnly ? "readonly-map" : "editable-map"}
           center={userPos || officePos}
           zoom={17}
@@ -180,7 +220,7 @@ export default function LocationMap({
                </Marker>
               )
           )}
-        </MapContainer>
+        </SafeMapContainer>
       </div>
       {!readOnly && (
         <>

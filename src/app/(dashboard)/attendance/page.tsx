@@ -43,22 +43,22 @@ export default function AttendancePage() {
           {/* แจ้งเตือน: ไปราชการ/ลา ให้แจ้งที่แผนงานล่วงหน้ารายสัปดาห์ */}
           <Link
             href="/weekly-plan"
-            className="group flex items-center gap-4 p-4 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100/70 hover:border-amber-300 transition-colors"
+            className="group flex items-center gap-4 p-4 rounded-2xl border border-blue-200 bg-blue-50 hover:bg-blue-100/70 hover:border-blue-300 transition-colors"
           >
-            <div className="p-3 rounded-xl bg-white text-amber-600 shadow-sm shrink-0">
+            <div className="p-3 rounded-xl bg-white text-blue-600 shadow-sm shrink-0">
               <Info className="w-5 h-5"/>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-amber-900">กรณีไปราชการหรือลา</p>
-              <p className="text-xs text-amber-800 leading-relaxed mt-0.5">
+              <p className="font-bold text-sm text-blue-900">กรณีไปราชการหรือลา</p>
+              <p className="text-xs text-blue-800 leading-relaxed mt-0.5">
                 กรุณาแจ้งที่เมนู <span className="font-semibold">แผนงานล่วงหน้ารายสัปดาห์</span>
               </p>
             </div>
-            <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-amber-700 whitespace-nowrap group-hover:gap-2 transition-all">
+            <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-blue-700 whitespace-nowrap group-hover:gap-2 transition-all">
               ไปที่แผนงาน
               <ChevronRight className="w-4 h-4"/>
             </span>
-            <ChevronRight className="sm:hidden w-5 h-5 text-amber-600 shrink-0"/>
+            <ChevronRight className="sm:hidden w-5 h-5 text-blue-600 shrink-0"/>
           </Link>
 
           {/* Attendance Check-in/out Card */}

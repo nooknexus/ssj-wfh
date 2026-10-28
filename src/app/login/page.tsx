@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, BadgeCheck, KeyRound } from "lucide-react";
+import { ArrowRight, BadgeCheck, Info, KeyRound } from "lucide-react";
 import { APP_CONFIG } from "@/lib/constants";
 import { trpc } from "@/trpc/client";
 import Image from "next/image";
@@ -151,6 +151,17 @@ export default function LoginPage() {
                     กำลังตรวจสอบข้อมูล...
                   </div>
                 ) : null}
+
+                <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800 shadow-sm">
+                  <Info className="size-5 mt-0.5 shrink-0 text-blue-500" />
+                  <div className="text-sm leading-relaxed">
+                    <p className="font-bold">ใช้งานระบบครั้งแรก?</p>
+                    <p>
+                      กรุณาเข้าสู่ระบบด้วย <span className="font-semibold">MOPH ProviderID</span> เพื่อลงทะเบียนก่อน
+                      หลังจากนั้นจึงเข้าสู่ระบบด้วย ThaiD ได้
+                    </p>
+                  </div>
+                </div>
 
                 <div className="space-y-3">
                   <div className="rounded-xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/50 p-4.5 shadow-md shadow-emerald-500/10 transition-all hover:border-emerald-500/60">

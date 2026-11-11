@@ -32,6 +32,7 @@ cp .env.example .env
 - `NEXTAUTH_URL`: URL จริงของระบบ (เช่น `https://wfh.plkhealth.go.th`)
 - `NEXTAUTH_SECRET`: สุ่มรหัสลับใหม่ (ใช้คำสั่ง `openssl rand -base64 32` เพื่อสร้าง)
 - `PORT`: พอร์ตที่ต้องการให้ระบบรัน (เช่น 3004)
+- `MORPROM_NOTIFY_CLIENT_KEY`, `MORPROM_NOTIFY_SECRET_KEY`: key ของ MorProm Notify สำหรับแจ้งเตือนเข้ากลุ่มผู้ดูแลเมื่อมีผู้ใช้ใหม่ลงทะเบียน (เว้นว่างไว้ = ไม่ส่งแจ้งเตือน)
 
 ### 3. เตรียมฐานข้อมูล (ยก Database จาก Dev ไป Production)
 เนื่องจากต้องการใช้ข้อมูลทั้งหมดจาก Development ไปยัง Production ให้ทำการ Export และ Import ฐานข้อมูลทั้งหมดดังนี้

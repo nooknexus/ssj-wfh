@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { authenticateWithMOPH } from "@/lib/sso";
 import { authenticateWithThaiD } from "@/lib/thaid";
 import { normalizeRoles } from "@/lib/roles";
+import { buildNewUserFlex, sendMorPromNotify } from "@/lib/morprom-notify";
 
 function compact<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
@@ -103,6 +104,22 @@ export const authOptions: NextAuthOptions = {
                 status: "pending",
               },
             });
+
+        if (!existingUser) {
+          // แจ้งผู้ดูแลในกลุ่ม MorProm ไม่รอผล การแจ้งเตือนล้มต้องไม่ทำให้เข้าสู่ระบบไม่ได้
+          void sendMorPromNotify({
+            messages: [
+              buildNewUserFlex({
+                titleTh: user.title_th,
+                nameTh: user.name_th,
+                nameEng: user.name_eng,
+                position: user.position,
+                hname: user.hname,
+                registeredAt: new Date(),
+              }),
+            ],
+          });
+        }
 
         return toSessionUser(user);
       },

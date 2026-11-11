@@ -1,6 +1,7 @@
 // แจ้งเตือนเข้ากลุ่มผ่าน MorProm Notify (คนละบริการกับ MOPH Alert ใน moph-alert.ts ที่ส่งหารายบุคคล)
 
 import { APP_CONFIG } from "@/lib/constants";
+import { PLATFORM_LABELS, type ConferencePlatform } from "@/lib/conference-booking";
 
 const MORPROM_NOTIFY_URL = "https://morpromt2f.moph.go.th/api/notify/send";
 const FLEX_HEADER_IMAGE = "https://plkhealth.moph.go.th/www/wp-content/uploads/2025/08/moph-flex-header-1-1.png";
@@ -37,24 +38,17 @@ export async function sendMorPromNotify(payload: MorPromNotifyPayload): Promise<
   }
 }
 
-export type NewUserInfo = {
-  titleTh?: string | null;
-  nameTh?: string | null;
-  nameEng?: string | null;
-  position?: string | null;
-  hname?: string | null;
-  registeredAt: Date;
-};
+const thaiDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", ...options }).format(date);
+const formatThaiDate = (date: Date) => thaiDate(date, { day: "numeric", month: "short", year: "numeric" });
+const formatTime = (date: Date) => thaiDate(date, { hour: "2-digit", minute: "2-digit" });
+const formatThaiDateTime = (date: Date) => `${formatThaiDate(date)} ${formatTime(date)}`;
 
-const formatThaiDateTime = (date: Date) =>
-  new Intl.DateTimeFormat("th-TH", {
-    timeZone: "Asia/Bangkok",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+/** ช่วงเวลาประชุม: วันเดียวกันแสดงวันครั้งเดียว ข้ามวันแสดงทั้งสองวัน */
+const formatThaiRange = (start: Date, end: Date) =>
+  formatThaiDate(start) === formatThaiDate(end)
+    ? `${formatThaiDate(start)} เวลา ${formatTime(start)}–${formatTime(end)} น.`
+    : `${formatThaiDateTime(start)} – ${formatThaiDateTime(end)} น.`;
 
 const detailRow = (label: string, value?: string | null) =>
   value?.trim()
@@ -70,18 +64,23 @@ const detailRow = (label: string, value?: string | null) =>
       }
     : null;
 
-/** Flex Message แจ้งผู้ดูแลว่ามีผู้ใช้ใหม่ลงทะเบียนและรออนุมัติ */
-export function buildNewUserFlex(user: NewUserInfo) {
-  const fullName = [user.titleTh, user.nameTh].filter(Boolean).join("") || user.nameEng?.trim() || "";
-  const rows = [
-    detailRow("คำนำหน้าและชื่อ", fullName),
-    detailRow("ตำแหน่ง", user.position),
-    detailRow("หน่วยงาน", user.hname),
-  ].filter((row) => row !== null);
+/** Flex Message แบบ "รอผู้ดูแลอนุมัติ": หัวข้อ, รายละเอียด (เฉพาะช่องที่มีข้อมูล), กล่องสีส้ม และเวลาที่ footer */
+const pendingApprovalFlex = ({
+  altText,
+  title,
+  details,
+  footerText,
+}: {
+  altText: string;
+  title: string;
+  details: Array<[label: string, value: string | null | undefined]>;
+  footerText: string;
+}) => {
+  const rows = details.map(([label, value]) => detailRow(label, value)).filter((row) => row !== null);
 
   return {
     type: "flex",
-    altText: `มีผู้ใช้ใหม่ลงทะเบียน: ${fullName || "ไม่ระบุชื่อ"}`,
+    altText,
     contents: {
       type: "bubble",
       size: "mega",
@@ -104,15 +103,7 @@ export function buildNewUserFlex(user: NewUserInfo) {
             cornerRadius: "15px",
             paddingAll: "16px",
             contents: [
-              {
-                type: "text",
-                text: `👤 มีผู้ใช้ใหม่ลงทะเบียน บนระบบ ${APP_CONFIG.name}`,
-                align: "center",
-                color: "#2D2D2D",
-                weight: "bold",
-                size: "lg",
-                wrap: true,
-              },
+              { type: "text", text: title, align: "center", color: "#2D2D2D", weight: "bold", size: "lg", wrap: true },
             ],
           },
           ...(rows.length ? [{ type: "box", layout: "vertical", spacing: "xs", margin: "lg", contents: rows }] : []),
@@ -132,17 +123,63 @@ export function buildNewUserFlex(user: NewUserInfo) {
         layout: "vertical",
         contents: [
           { type: "separator", margin: "md" },
-          {
-            type: "text",
-            text: `ลงทะเบียนเมื่อ ${formatThaiDateTime(user.registeredAt)} น.`,
-            size: "xs",
-            color: "#999999",
-            margin: "md",
-            align: "center",
-            wrap: true,
-          },
+          { type: "text", text: footerText, size: "xs", color: "#999999", margin: "md", align: "center", wrap: true },
         ],
       },
     },
   };
+};
+
+export type NewUserInfo = {
+  titleTh?: string | null;
+  nameTh?: string | null;
+  nameEng?: string | null;
+  position?: string | null;
+  hname?: string | null;
+  registeredAt: Date;
+};
+
+/** แจ้งผู้ดูแลว่ามีผู้ใช้ใหม่ลงทะเบียนและรออนุมัติ */
+export function buildNewUserFlex(user: NewUserInfo) {
+  const fullName = [user.titleTh, user.nameTh].filter(Boolean).join("") || user.nameEng?.trim() || "";
+
+  return pendingApprovalFlex({
+    altText: `มีผู้ใช้ใหม่ลงทะเบียน: ${fullName || "ไม่ระบุชื่อ"}`,
+    title: `👤 มีผู้ใช้ใหม่ลงทะเบียน บนระบบ ${APP_CONFIG.name}`,
+    details: [
+      ["คำนำหน้าและชื่อ", fullName],
+      ["ตำแหน่ง", user.position],
+      ["หน่วยงาน", user.hname],
+    ],
+    footerText: `ลงทะเบียนเมื่อ ${formatThaiDateTime(user.registeredAt)} น.`,
+  });
+}
+
+export type BookingPendingInfo = {
+  title: string;
+  linkName: string;
+  platform: ConferencePlatform;
+  startAt: Date;
+  endAt: Date;
+  attendees?: number | null;
+  requesterName?: string | null;
+  departmentName?: string | null;
+  bookedAt: Date;
+};
+
+/** แจ้งผู้ดูแล IT ว่ามีการจอง Web Conference รออนุมัติ (ไม่ใส่ URL ห้องประชุม ซึ่งเปิดเผยหลังอนุมัติเท่านั้น) */
+export function buildBookingPendingFlex(booking: BookingPendingInfo) {
+  return pendingApprovalFlex({
+    altText: `มีการจอง Web Conference รออนุมัติ: ${booking.title}`,
+    title: "📹 มีการจอง Web Conference รออนุมัติ",
+    details: [
+      ["หัวข้อการประชุม", booking.title],
+      ["ลิงก์", `${booking.linkName} (${PLATFORM_LABELS[booking.platform]})`],
+      ["วันและเวลา", formatThaiRange(booking.startAt, booking.endAt)],
+      ["จำนวนผู้เข้าร่วม", booking.attendees ? `${booking.attendees} คน` : null],
+      ["ผู้จอง", booking.requesterName],
+      ["กลุ่มงาน", booking.departmentName],
+    ],
+    footerText: `จองเมื่อ ${formatThaiDateTime(booking.bookedAt)} น.`,
+  });
 }

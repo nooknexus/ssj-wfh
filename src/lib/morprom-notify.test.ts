@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildNewUserFlex, sendMorPromNotify } from "./morprom-notify";
+import { buildBookingPendingFlex, buildNewUserFlex, sendMorPromNotify } from "./morprom-notify";
 
 const registeredAt = new Date("2026-11-11T07:35:00.000Z"); // 14:35 น. เวลาไทย
 
@@ -45,6 +45,63 @@ describe("buildNewUserFlex", () => {
 
   it("should not contain any button", () => {
     expect(JSON.stringify(buildNewUserFlex({ nameTh: "ก", registeredAt }))).not.toContain('"button"');
+  });
+});
+
+describe("buildBookingPendingFlex", () => {
+  const booking = {
+    title: "ประชุมคณะกรรมการ",
+    linkName: "Webex 1",
+    platform: "webex" as const,
+    startAt: new Date("2026-11-12T02:00:00.000Z"), // 09:00 น.
+    endAt: new Date("2026-11-12T05:30:00.000Z"), // 12:30 น.
+    attendees: 25,
+    requesterName: "นายทดสอบ ระบบ",
+    departmentName: "กลุ่มงานสุขภาพดิจิทัล",
+    bookedAt: registeredAt,
+  };
+
+  it("should show the booking details, approval notice and booking time", () => {
+    const message = buildBookingPendingFlex(booking);
+
+    expect(message.altText).toBe("มีการจอง Web Conference รออนุมัติ: ประชุมคณะกรรมการ");
+    expect(findText(message.contents)).toEqual([
+      "📹 มีการจอง Web Conference รออนุมัติ",
+      "หัวข้อการประชุม",
+      "ประชุมคณะกรรมการ",
+      "ลิงก์",
+      "Webex 1 (Webex)",
+      "วันและเวลา",
+      "12 พ.ย. 2569 เวลา 09:00–12:30 น.",
+      "จำนวนผู้เข้าร่วม",
+      "25 คน",
+      "ผู้จอง",
+      "นายทดสอบ ระบบ",
+      "กลุ่มงาน",
+      "กลุ่มงานสุขภาพดิจิทัล",
+      "⏳ รอผู้ดูแลอนุมัติ",
+      "จองเมื่อ 11 พ.ย. 2569 14:35 น.",
+    ]);
+  });
+
+  it("should show both dates when the meeting crosses midnight", () => {
+    const texts = findText(
+      buildBookingPendingFlex({
+        ...booking,
+        startAt: new Date("2026-11-12T15:00:00.000Z"), // 22:00 น.
+        endAt: new Date("2026-11-12T18:00:00.000Z"), // 01:00 น. วันถัดไป
+      }).contents,
+    );
+    expect(texts).toContain("12 พ.ย. 2569 22:00 – 13 พ.ย. 2569 01:00 น.");
+  });
+
+  it("should leave out empty details and never include the meeting URL", () => {
+    const message = buildBookingPendingFlex({ ...booking, attendees: null, departmentName: null });
+    const texts = findText(message.contents);
+
+    expect(texts).not.toContain("จำนวนผู้เข้าร่วม");
+    expect(texts).not.toContain("กลุ่มงาน");
+    expect(JSON.stringify(message)).not.toContain("webex.com");
   });
 });
 

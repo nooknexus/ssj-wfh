@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const notify = vi.hoisted(() => ({ sendMorPromNotify: vi.fn(), buildBookingPendingFlex: vi.fn((info) => ({ info })) }));
+vi.mock("@/lib/morprom-notify", () => notify);
+
 import { meetingRouter } from "./meeting";
 
 const at = (value: string) => new Date(`2099-10-21T${value}:00.000Z`);
@@ -111,5 +115,38 @@ describe("meetingRouter status guards", () => {
     await caller.createBooking({ linkId: 2, title: "ประชุม", startAt: at("10:00"), endAt: at("11:00"), attendees: 10 });
 
     expect(create.mock.calls[0][0].data).toMatchObject({ user_id: 1, department_id: 3, status: "pending" });
+  });
+});
+
+describe("meetingRouter booking notification", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const transactionFor = (conflict: unknown) => ({
+    conferenceLink: { findUnique: vi.fn().mockResolvedValue({ id: 2, name: "Webex 1", platform: "webex", is_active: true, max_participants: 100 }) },
+    user: {
+      findUnique: vi.fn().mockResolvedValue({ department_id: 3, title_th: "นาย", name_th: "ทดสอบ ระบบ", name_eng: null, department: { name: "กลุ่มงานสุขภาพดิจิทัล" } }),
+    },
+    meetingBooking: {
+      findFirst: vi.fn().mockResolvedValue(conflict),
+      create: vi.fn().mockResolvedValue({ id: 10, title: "ประชุม", start_at: at("10:00"), end_at: at("11:00"), attendees: 10, created_at: at("09:00") }),
+    },
+  });
+
+  it("notifies the admins once a pending booking is saved", async () => {
+    const caller = createCaller(["staff"], { $transaction: vi.fn((callback) => callback(transactionFor(null))) });
+
+    await caller.createBooking({ linkId: 2, title: "ประชุม", startAt: at("10:00"), endAt: at("11:00"), attendees: 10 });
+
+    expect(notify.sendMorPromNotify).toHaveBeenCalledTimes(1);
+    expect(notify.buildBookingPendingFlex).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "ประชุม", linkName: "Webex 1", platform: "webex", requesterName: "นายทดสอบ ระบบ", departmentName: "กลุ่มงานสุขภาพดิจิทัล" }),
+    );
+  });
+
+  it("does not notify when the booking is refused", async () => {
+    const caller = createCaller(["staff"], { $transaction: vi.fn((callback) => callback(transactionFor({ id: 99 }))) });
+
+    await expect(caller.createBooking({ linkId: 2, title: "ประชุม", startAt: at("10:00"), endAt: at("11:00"), attendees: 10 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(notify.sendMorPromNotify).not.toHaveBeenCalled();
   });
 });

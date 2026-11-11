@@ -6,6 +6,7 @@ import {
   type ConferenceBookingStatus,
 } from "@/lib/conference-booking";
 import { CONFERENCE_ADMIN_ROLES } from "@/lib/roles";
+import { buildBookingPendingFlex, sendMorPromNotify } from "@/lib/morprom-notify";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
 
 const statusSchema = z.enum(["pending", "approved", "rejected", "cancelled"]);
@@ -95,22 +96,45 @@ export const meetingRouter = createTRPCRouter({
     });
   }),
 
-  createBooking: protectedProcedure.input(bookingInput).mutation(async ({ ctx, input }) =>
-    ctx.db.$transaction(async (tx) => {
+  createBooking: protectedProcedure.input(bookingInput).mutation(async ({ ctx, input }) => {
+    const { booking, link, requester } = await ctx.db.$transaction(async (tx) => {
       const userId = Number(ctx.session.user.id);
       const [link, requester] = await Promise.all([
         tx.conferenceLink.findUnique({ where: { id: input.linkId } }),
-        tx.user.findUnique({ where: { id: userId }, select: { department_id: true } }),
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { department_id: true, title_th: true, name_th: true, name_eng: true, department: { select: { name: true } } },
+        }),
       ]);
       if (!link || !link.is_active) throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบลิงก์ที่เปิดใช้งาน" });
       assertValidBooking(input, link.max_participants);
       const conflict = await tx.meetingBooking.findFirst({ where: conflictWhere(input.linkId, input.startAt, input.endAt) });
       if (conflict) throw new TRPCError({ code: "CONFLICT", message: "ลิงก์นี้ถูกจองในช่วงเวลาที่เลือกแล้ว" });
-      return tx.meetingBooking.create({
+      const booking = await tx.meetingBooking.create({
         data: { link_id: input.linkId, user_id: userId, department_id: requester?.department_id ?? null, title: input.title, description: input.description, start_at: input.startAt, end_at: input.endAt, attendees: input.attendees, status: "pending" },
       });
-    }, { isolationLevel: "Serializable" }),
-  ),
+      return { booking, link, requester };
+    }, { isolationLevel: "Serializable" });
+
+    // แจ้งผู้ดูแล IT ในกลุ่ม MorProm หลังบันทึกสำเร็จ ไม่รอผล การแจ้งเตือนล้มต้องไม่ทำให้จองไม่สำเร็จ
+    void sendMorPromNotify({
+      messages: [
+        buildBookingPendingFlex({
+          title: booking.title,
+          linkName: link.name,
+          platform: link.platform,
+          startAt: booking.start_at,
+          endAt: booking.end_at,
+          attendees: booking.attendees,
+          requesterName: [requester?.title_th, requester?.name_th].filter(Boolean).join("") || requester?.name_eng,
+          departmentName: requester?.department?.name,
+          bookedAt: booking.created_at,
+        }),
+      ],
+    });
+
+    return booking;
+  }),
 
   getMyBookings: protectedProcedure.query(async ({ ctx }) => {
     const bookings = await ctx.db.meetingBooking.findMany({

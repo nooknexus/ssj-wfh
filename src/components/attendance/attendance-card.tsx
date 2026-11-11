@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ import { MapPin, Clock, Camera, CheckCircle2, AlertCircle, Lightbulb } from "luc
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { formatWorkedDuration, getWorkProgress, isManualLocationAllowed } from "@/lib/attendance-utils";
+import { accuracyLevel, isLikelyNetworkFix, sampleBestPosition } from "@/lib/geolocation";
+import { GpsHint } from "@/components/attendance/gps-hint";
 import { DAY_PERIOD_LABELS, EXCEPTION_TYPE_LABELS } from "@/lib/attendance-exception";
 import {
   Dialog,
@@ -52,11 +54,26 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 type WorkType = "wfh" | "office" | "official_trip" | "onsite";
 
+const ACCURACY_TONE = { good: "text-emerald-600", fair: "text-amber-600", poor: "text-rose-600" } as const;
+
+/** ความแม่นยำของพิกัดจาก GPS (ไม่แสดงเมื่อผู้ใช้ปักหมุดเอง) */
+function AccuracyText({ accuracy, isSampling }: { accuracy: number | null; isSampling: boolean }) {
+  if (accuracy === null) return null;
+  return (
+    <p className={cn("text-[10px] font-semibold", ACCURACY_TONE[accuracyLevel(accuracy)])}>
+      ความแม่นยำ ±{Math.round(accuracy)} ม.{isSampling && " · กำลังหาพิกัดที่แม่นขึ้น..."}
+    </p>
+  );
+}
+
 export function AttendanceCard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workType, setWorkType] = useState<WorkType>("office");
   const [tasks, setTasks] = useState("");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  // ความคลาดเคลื่อนของพิกัด (เมตร) null เมื่อผู้ใช้ปักหมุดเอง
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const stopSamplingRef = useRef<(() => void) | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
 
@@ -142,7 +159,10 @@ export function AttendanceCard() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     // ดึงพิกัดอัตโนมัติเมื่อเปิดหน้า
     fetchLocation();
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      stopSamplingRef.current?.();
+    };
   }, []);
 
   const distance = useMemo(() => {
@@ -150,47 +170,28 @@ export function AttendanceCard() {
     return calculateDistance(location.lat, location.lng, OFFICE_COORDS.lat, OFFICE_COORDS.lng);
   }, [location, OFFICE_COORDS]);
 
+  // รอพิกัดเสร็จแล้วแต่ยังหยาบมาก: น่าจะมาจาก Wi-Fi/เครือข่ายมือถือ (ไม่นับกรณีปักหมุดเอง)
+  const hasNetworkFix = !isGettingLocation && locationAccuracy !== null && isLikelyNetworkFix(locationAccuracy);
+
   const isInArea = useMemo(() => {
     if (distance === null) return false;
     return distance <= OFFICE_RADIUS_METERS;
   }, [distance, OFFICE_RADIUS_METERS]);
 
   const fetchLocation = (onSuccess?: (loc: { lat: number; lng: number }) => void) => {
-    setIsGettingLocation(true);
     if (!navigator.geolocation) {
       toast.error("เบราว์เซอร์ของคุณไม่รองรับการดึงพิกัด");
-      setIsGettingLocation(false);
       return;
     }
+    stopSamplingRef.current?.();
+    setIsGettingLocation(true);
 
-    const options: PositionOptions = { 
-      enableHighAccuracy: true, 
-      timeout: 10000,
-      maximumAge: 0 
-    };
-
-    const handleSuccess = (position: GeolocationPosition) => {
-      const newLoc = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      };
+    const applyFix = (fix: { lat: number; lng: number; accuracy: number }) => {
+      const newLoc = { lat: fix.lat, lng: fix.lng };
       setLocation(newLoc);
+      setLocationAccuracy(fix.accuracy);
       setIsGettingLocation(false);
       if (onSuccess) onSuccess(newLoc);
-    };
-
-    const handleError = (error: GeolocationPositionError) => {
-      // หาก High Accuracy ล้มเหลว (Code 2: Unavailable หรือ Code 3: Timeout) ให้ลองแบบธรรมดา
-      if (options.enableHighAccuracy && (error.code === 2 || error.code === 3)) {
-        console.log("High accuracy failed, retrying with normal accuracy...");
-        navigator.geolocation.getCurrentPosition(handleSuccess, handleFinalError, {
-          ...options,
-          enableHighAccuracy: false,
-          timeout: 15000
-        });
-      } else {
-        handleFinalError(error);
-      }
     };
 
     const handleFinalError = (error: GeolocationPositionError) => {
@@ -203,7 +204,31 @@ export function AttendanceCard() {
       setIsGettingLocation(false);
     };
 
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
+    // รอพิกัดที่แม่นที่สุดภายในเวลาที่กำหนด แสดงพิกัดที่ดีขึ้นระหว่างรอ
+    stopSamplingRef.current = sampleBestPosition(navigator.geolocation, {
+      onProgress: (fix) => {
+        setLocation({ lat: fix.lat, lng: fix.lng });
+        setLocationAccuracy(fix.accuracy);
+      },
+      onDone: (fix, error) => {
+        stopSamplingRef.current = null;
+        if (fix) {
+          applyFix(fix);
+          return;
+        }
+        if (error && error.code === error.PERMISSION_DENIED) {
+          handleFinalError(error);
+          return;
+        }
+        // GPS ไม่ตอบในเวลาที่กำหนด: ลองพิกัดแบบความแม่นยำปกติ
+        navigator.geolocation.getCurrentPosition(
+          (position) =>
+            applyFix({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy }),
+          handleFinalError,
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
+        );
+      },
+    });
   };
 
   const requestPermission = async () => {
@@ -410,6 +435,7 @@ export function AttendanceCard() {
                           <p className="text-[10px] text-slate-400 font-medium tracking-tight">
                             {location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : "กรุณาคลิกเพื่อดึงพิกัดล่าสุด"}
                           </p>
+                          <AccuracyText accuracy={locationAccuracy} isSampling={isGettingLocation} />
                         </div>
                       </div>
                       
@@ -444,12 +470,17 @@ export function AttendanceCard() {
                       </div>
                     </div>
 
-                    {location && workType === "office" && !isInArea && (
+                    {hasNetworkFix ? (
+                      <GpsHint accuracy={locationAccuracy!} />
+                    ) : location && workType === "office" && !isInArea && !isGettingLocation && (
                       <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-blue-50 border border-blue-100 text-blue-800">
                         <Lightbulb className="w-4 h-4 mt-0.5 shrink-0 text-blue-500" />
                         <div className="text-xs leading-relaxed">
                           <p className="font-bold">หากคุณอยู่ที่สำนักงานแล้ว แต่ระบบแสดงว่าอยู่นอกพื้นที่</p>
-                          <p>ให้ปิดการใช้งาน Wi-Fi และตรวจสอบว่าได้เปิด GPS (ตำแหน่ง) ในสมาร์ทโฟนแล้ว จากนั้นกด &quot;รีโหลด&quot; เพื่อดึงพิกัดใหม่</p>
+                          {locationAccuracy !== null && accuracyLevel(locationAccuracy) !== "good" && (
+                            <p>พิกัดตอนนี้อาจคลาดเคลื่อนได้ประมาณ ±{Math.round(locationAccuracy)} ม. (สัญญาณ GPS ในอาคารมักไม่ดี)</p>
+                          )}
+                          <p>ให้ปิดการใช้งาน Wi-Fi และตรวจสอบว่าได้เปิด GPS (ตำแหน่ง) ในสมาร์ทโฟนแล้ว จากนั้นกด &quot;รีโหลด&quot; เพื่อดึงพิกัดใหม่ หรือขยับไปใกล้หน้าต่าง</p>
                         </div>
                       </div>
                     )}
@@ -464,6 +495,7 @@ export function AttendanceCard() {
                           radius={OFFICE_RADIUS_METERS}
                           officeLat={OFFICE_COORDS.lat}
                           officeLng={OFFICE_COORDS.lng}
+                          accuracy={locationAccuracy}
                         />
                       </div>
                     )}
@@ -592,6 +624,7 @@ export function AttendanceCard() {
                         <p className="text-xs text-slate-500">
                           {location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : "กรุณาอนุญาตการเข้าถึงตำแหน่ง"}
                         </p>
+                        <AccuracyText accuracy={locationAccuracy} isSampling={isGettingLocation} />
                       </div>
                     </div>
                     {allowManualLocation && (
@@ -605,9 +638,19 @@ export function AttendanceCard() {
                       </Button>
                     )}
                   </div>
+                  {hasNetworkFix && <GpsHint accuracy={locationAccuracy!} />}
                   {location && (
                     <div className="mt-1 rounded-xl overflow-hidden shadow-sm border border-emerald-200/60 z-0">
-                      <LocationMap initialLocation={location} readOnly={true} />
+                      <LocationMap
+                        initialLocation={location}
+                        readOnly={true}
+                        distance={distance || 0}
+                        isInArea={isInArea}
+                        radius={OFFICE_RADIUS_METERS}
+                        officeLat={OFFICE_COORDS.lat}
+                        officeLng={OFFICE_COORDS.lng}
+                        accuracy={locationAccuracy}
+                      />
                     </div>
                   )}
                 </div>
@@ -669,6 +712,7 @@ export function AttendanceCard() {
               radius={OFFICE_RADIUS_METERS}
               onConfirm={(loc) => {
                 setLocation(loc);
+                setLocationAccuracy(null);
                 setIsMapOpen(false);
                 toast.success("ปักหมุดตำแหน่งสำเร็จ");
               }}

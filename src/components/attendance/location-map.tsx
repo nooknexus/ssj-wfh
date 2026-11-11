@@ -111,6 +111,8 @@ interface LocationMapProps {
   radius?: number;
   officeLat?: number;
   officeLng?: number;
+  /** ความคลาดเคลื่อนของพิกัดผู้ใช้ (เมตร) วาดเป็นวงรอบหมุด */
+  accuracy?: number | null;
 }
 
 // Component to re-center map when initialLocation changes
@@ -142,7 +144,8 @@ export default function LocationMap({
   isInArea = false,
   radius = OFFICE_RADIUS,
   officeLat = OFFICE_LAT,
-  officeLng = OFFICE_LNG
+  officeLng = OFFICE_LNG,
+  accuracy,
 }: LocationMapProps) {
   const [mounted, setMounted] = useState(false);
   const [position, setPosition] = useState<L.LatLng | null>(
@@ -199,6 +202,15 @@ export default function LocationMap({
           }}
         />
 
+          {/* วงความคลาดเคลื่อนของพิกัดผู้ใช้ */}
+          {position && accuracy != null && accuracy > 0 && (
+            <Circle
+              center={position}
+              radius={accuracy}
+              pathOptions={{ color: "#64748b", weight: 1, fillColor: "#94a3b8", fillOpacity: 0.15 }}
+            />
+          )}
+
           {/* User Marker */}
           {!readOnly ? (
              <LocationMarker position={position} setPosition={setPosition} />
@@ -209,6 +221,9 @@ export default function LocationMap({
                    <div className="p-2 min-w-[150px]">
                      <p className="font-bold text-slate-900 text-xs mb-1">ตำแหน่งคุณ</p>
                      <p className="text-[10px] text-slate-500 mb-1.5 font-medium">ระยะห่างสำนักงาน: ~{distance ? Math.round(distance) : 0} ม.</p>
+                     {accuracy != null && (
+                       <p className="text-[10px] text-slate-500 mb-1.5 font-medium">ความแม่นยำ: ±{Math.round(accuracy)} ม.</p>
+                     )}
                      <div className={cn(
                        "flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-bold",
                        isInArea ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"

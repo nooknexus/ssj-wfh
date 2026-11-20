@@ -22,6 +22,7 @@ export const systemSettingRouter = createTRPCRouter({
       moph_alert_checkin_enabled: "true",
       moph_alert_checkout_enabled: "true",
       moph_alert_reminder_enabled: "true",
+      moph_alert_checkin_reminder_enabled: "true",
       office_radius: "100",
       working_time: "08:30",
       afternoon_start_time: "13:00",

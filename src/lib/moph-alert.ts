@@ -133,6 +133,57 @@ export function getCheckInFlexMessage(timeString: string) {
 }
 
 /**
+ * สร้าง Flex Message สำหรับเตือนผู้ที่ยังไม่ได้ลงเวลาเข้างาน
+ */
+export function getCheckInReminderFlexMessage() {
+  return {
+    type: "flex",
+    altText: "แจ้งเตือน: คุณยังไม่ได้ลงเวลาเข้างาน",
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      header: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "0px",
+        contents: [
+          {
+            type: "image",
+            url: "https://plkhealth.moph.go.th/www/wp-content/uploads/2025/08/moph-flex-header-1-1.png",
+            size: "full",
+            aspectRatio: "3120:885",
+            aspectMode: "cover"
+          }
+        ]
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "คุณยังไม่ได้ลงเวลาเข้างาน (Check-in) สำหรับวันนี้",
+            wrap: true,
+            size: "sm",
+            color: "#0f172a",
+            weight: "bold"
+          },
+          {
+            type: "text",
+            text: "กรุณาเข้าไปลงเวลาในระบบ หากวันนี้ลาหรือไปราชการ กรุณาแจ้งที่เมนู แผนงานล่วงหน้ารายสัปดาห์",
+            wrap: true,
+            size: "sm",
+            color: "#64748b",
+            margin: "sm"
+          }
+        ],
+        paddingAll: "16px"
+      }
+    }
+  };
+}
+
+/**
  * สร้าง Flex Message สำหรับแจ้งเตือนการลงเวลาออกงาน
  */
 export function getCheckOutReminderFlexMessage() {

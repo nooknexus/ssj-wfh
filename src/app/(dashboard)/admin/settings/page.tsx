@@ -227,6 +227,7 @@ export default function AdminSettingsPage() {
             {[
               { key: "moph_alert_checkin_enabled", label: "แจ้งเตือนเมื่อลงเวลาเข้างาน", desc: "ส่งข้อความยืนยันเวลา Check-in" },
               { key: "moph_alert_checkout_enabled", label: "แจ้งเตือนเมื่อลงเวลาออกงาน", desc: "ส่งข้อความยืนยันเวลา Check-out" },
+              { key: "moph_alert_checkin_reminder_enabled", label: "แจ้งเตือนให้ลงเวลาเข้างาน", desc: "ส่งข้อความเตือนรายวันเวลา 09:00 น. สำหรับผู้ที่ยังไม่ได้ Check-in (ไม่เตือนผู้ที่ลาหรือไปราชการช่วงเช้า)" },
               { key: "moph_alert_reminder_enabled", label: "แจ้งเตือนให้ลงเวลาออกงาน", desc: "ส่งข้อความเตือนรายวันเวลา 17:00 น. สำหรับผู้ที่ยังไม่ได้ Check-out" },
             ].map((module) => (
               <div key={module.key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">

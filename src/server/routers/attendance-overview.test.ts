@@ -79,3 +79,38 @@ describe("attendance.getMyMonthOverview", () => {
     expect(result.onTime).toBe(0);
   });
 });
+
+describe("attendance.updateRemark", () => {
+  it("saves a trimmed remark on the user's own record", async () => {
+    const update = vi.fn().mockResolvedValue({ id: 4, remark: "รถติดมาก" });
+    const db = { attendanceRecord: { findFirst: vi.fn().mockResolvedValue({ id: 4 }), update } };
+
+    await createCaller(["staff"], db).updateRemark({ id: 4, remark: "  รถติดมาก  " });
+
+    expect(db.attendanceRecord.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 4, user_id: 9 } }));
+    expect(update).toHaveBeenCalledWith({ where: { id: 4 }, data: { remark: "รถติดมาก" } });
+  });
+
+  it("clears the remark when it is left empty", async () => {
+    const update = vi.fn().mockResolvedValue({ id: 4, remark: null });
+    const db = { attendanceRecord: { findFirst: vi.fn().mockResolvedValue({ id: 4 }), update } };
+
+    await createCaller(["staff"], db).updateRemark({ id: 4, remark: "   " });
+
+    expect(update).toHaveBeenCalledWith({ where: { id: 4 }, data: { remark: null } });
+  });
+
+  it("refuses to edit someone else's record", async () => {
+    const update = vi.fn();
+    const db = { attendanceRecord: { findFirst: vi.fn().mockResolvedValue(null), update } };
+
+    await expect(createCaller(["hradmin"], db).updateRemark({ id: 99, remark: "x" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects remarks that are too long", async () => {
+    const db = { attendanceRecord: { findFirst: vi.fn(), update: vi.fn() } };
+    await expect(createCaller(["staff"], db).updateRemark({ id: 4, remark: "ก".repeat(501) })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+

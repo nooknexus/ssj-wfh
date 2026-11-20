@@ -30,6 +30,7 @@
 - รัน `prisma/migrations/20261020_attendance_exceptions/migration.sql` (สร้างตาราง `attendance_exceptions`)
 - รัน `prisma/migrations/20261020_conference_booking/migration.sql` (แทนตาราง `meeting_rooms` ด้วย `conference_links` และสร้าง `meeting_bookings` ใหม่ ต้องไม่มีข้อมูลเดิมในสองตารางนี้ ไม่เช่นนั้น migration จะหยุด)
 - รัน `prisma/migrations/20261020_leave_mysql_source/migration.sql` (เพิ่มคอลัมน์ `source`, `source_record_id` และสถานะ `cancelled` ใน `leave_requests`)
+- รัน `prisma/migrations/20261120_attendance_remark/migration.sql` (เพิ่มคอลัมน์ `remark` หมายเหตุที่ผู้ใช้กรอกใน `attendance_records`)
 
 ## [0.4.0] - 2026-05-01
 

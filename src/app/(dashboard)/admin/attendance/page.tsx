@@ -112,6 +112,7 @@ export default function AdminAttendancePage() {
         "เวลาออก": r.check_out_time ? format(new Date(r.check_out_time), "HH:mm") : "-",
         "สถานะ": STATUS_MAP[r.status]?.label || r.status,
         "รายละเอียดงาน": r.tasks || "-",
+        "หมายเหตุ": ("remark" in r && r.remark) || "-",
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
@@ -261,25 +262,26 @@ export default function AdminAttendancePage() {
                 <TableHead>เวลาออก</TableHead>
                 <TableHead>ระยะห่าง (เมตร)</TableHead>
                 <TableHead>สถานะ</TableHead>
+                <TableHead className="min-w-[160px]">หมายเหตุ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={9} className="h-32 text-center text-slate-500">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-slate-400" />
                     กำลังโหลดข้อมูล...
                   </TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-rose-500">
+                  <TableCell colSpan={9} className="h-32 text-center text-rose-500">
                     ไม่สามารถโหลดข้อมูลได้ โปรดตรวจสอบเงื่อนไขการค้นหา
                   </TableCell>
                 </TableRow>
               ) : !data?.items || data.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                  <TableCell colSpan={9} className="h-32 text-center text-slate-500">
                     ไม่พบข้อมูลการลงเวลาในช่วงเวลาที่เลือก
                   </TableCell>
                 </TableRow>
@@ -345,6 +347,13 @@ export default function AdminAttendancePage() {
                       <Badge className={STATUS_MAP[record.status]?.color || "bg-slate-100 text-slate-800"} variant="secondary">
                         {STATUS_MAP[record.status]?.label || record.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[240px]">
+                      {"remark" in record && record.remark ? (
+                        <span className="block whitespace-pre-wrap break-words text-sm text-slate-700">{record.remark}</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

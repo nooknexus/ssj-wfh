@@ -366,6 +366,8 @@ model AttendanceRecord {
   status         AttendanceStatus @default(on_time)
   tasks          String?          @db.Text
   mission_detail String?          @db.Text
+  /// หมายเหตุ/เหตุผลที่ผู้ใช้กรอกเอง เช่น เหตุผลที่มาสาย
+  remark         String?          @db.Text
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

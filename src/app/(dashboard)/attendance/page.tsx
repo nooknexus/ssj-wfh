@@ -12,6 +12,7 @@ import { Plus, FileText, Calendar as CalendarIcon, Clock, Info, ChevronRight } f
 import Link from "next/link";
 import { ModuleGuard } from "@/components/layout/module-guard";
 import { ApprovalsButton } from "@/components/attendance/approvals-button";
+import { RemarkButton } from "@/components/attendance/remark-button";
 
 export default function AttendancePage() {
   const { data: history, isLoading: isHistoryLoading } = trpc.attendance.getHistory.useQuery({ limit: 10 });
@@ -142,18 +143,19 @@ export default function AttendancePage() {
                     <TableHead className="text-xs uppercase">เวลาออก</TableHead>
                     <TableHead className="text-xs uppercase max-w-[200px]">รายละเอียดงาน</TableHead>
                     <TableHead className="text-xs uppercase text-center">สถานะ</TableHead>
+                    <TableHead className="text-xs uppercase">หมายเหตุ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isHistoryLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-slate-400">
+                      <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                         กำลังโหลดข้อมูล...
                       </TableCell>
                     </TableRow>
                   ) : history?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                      <TableCell colSpan={7} className="text-center py-8 text-slate-400">
                         ไม่พบประวัติการลงเวลา
                       </TableCell>
                     </TableRow>
@@ -177,6 +179,9 @@ export default function AttendancePage() {
                           <Badge variant={record.status === "on_time" ? "outline" : "destructive"} className="font-normal text-[10px]">
                             {record.status === "on_time" ? "ปกติ" : "สาย"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <RemarkButton record={record} />
                         </TableCell>
                       </TableRow>
                     ))

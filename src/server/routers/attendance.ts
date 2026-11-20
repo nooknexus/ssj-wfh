@@ -241,6 +241,23 @@ export const attendanceRouter = createTRPCRouter({
       });
     }),
 
+  // บันทึกหมายเหตุ/เหตุผลของการลงเวลา (แก้ได้เฉพาะรายการของตัวเอง เว้นว่าง = ลบหมายเหตุ)
+  updateRemark: protectedProcedure
+    .input(z.object({ id: z.number().int().positive(), remark: z.string().max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const record = await ctx.db.attendanceRecord.findFirst({
+        where: { id: input.id, user_id: Number(ctx.session.user.id) },
+        select: { id: true },
+      });
+      if (!record) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบรายการลงเวลานี้" });
+      }
+      return ctx.db.attendanceRecord.update({
+        where: { id: record.id },
+        data: { remark: input.remark.trim() || null },
+      });
+    }),
+
   // ภาพรวมการลงเวลาวันนี้สำหรับ Dashboard (หัวหน้างานเห็นเฉพาะกลุ่มงานตัวเอง)
   getTodayOverview: roleProcedure(ATTENDANCE_REPORT_ROLES).query(async ({ ctx }) => {
     const currentUser = await ctx.db.user.findUnique({
@@ -524,6 +541,7 @@ export const attendanceRouter = createTRPCRouter({
               check_out_time: (checkInTime?.getTime() === checkOutTime?.getTime()) ? null : attendance.check_out_time,
               status: finalStatus,
               tasks: attendance.tasks || "-",
+              remark: attendance.remark,
               check_in_lat: attendance.check_in_lat,
               check_in_lng: attendance.check_in_lng,
               check_out_lat: attendance.check_out_lat,

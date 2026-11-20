@@ -99,6 +99,16 @@ export default function AdminSettingsPage() {
               <p className="text-[10px] text-slate-500">ระยะห่างสูงสุดจากสำนักงาน (เมตร) ที่จะถือว่า "อยู่ในพื้นที่"</p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="working_time">เวลาเริ่มงานช่วงเช้า</Label>
+              <Input
+                id="working_time"
+                type="time"
+                value={formData.working_time || "08:30"}
+                onChange={(e) => handleChange("working_time", e.target.value)}
+              />
+              <p className="text-[10px] text-slate-500">ลงเวลาเข้างานหลังเวลานี้นับว่า &quot;สาย&quot; (ไม่นับ Onsite) และใช้เป็นเวลาเริ่มนับชั่วโมงทำงาน</p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="afternoon_start_time">เวลาเริ่มงานช่วงบ่าย</Label>
               <Input
                 id="afternoon_start_time"

@@ -287,8 +287,9 @@ export function AttendanceCard() {
   const isCheckedOut = !!status?.check_out_time;
   const workProgress = status?.check_in_time
     ? getWorkProgress(new Date(status.check_in_time), currentTime, {
-        workingTime: settings?.working_time,
-        afternoonStart: settings?.afternoon_start_time,
+        // ค่าว่างให้ใช้ค่าเริ่มต้น (เหมือนฝั่ง server)
+        workingTime: settings?.working_time || undefined,
+        afternoonStart: settings?.afternoon_start_time || undefined,
         exceptionPeriod: todayException?.period,
       })
     : null;

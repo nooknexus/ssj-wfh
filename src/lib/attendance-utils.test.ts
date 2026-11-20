@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWorkedDuration, getWorkProgress, isManualLocationAllowed } from "./attendance-utils";
+import { formatWorkedDuration, getWorkProgress, isCheckoutTasksRequired, isManualLocationAllowed } from "./attendance-utils";
 
 describe("isManualLocationAllowed", () => {
   it("should return true when setting is undefined or null", () => {
@@ -96,5 +96,15 @@ describe("formatWorkedDuration", () => {
   it("should show only minutes under an hour", () => {
     expect(formatWorkedDuration(45)).toBe("45 นาที");
     expect(formatWorkedDuration(0)).toBe("0 นาที");
+  });
+});
+
+describe("isCheckoutTasksRequired", () => {
+  it("should require the work summary unless it is switched off", () => {
+    expect(isCheckoutTasksRequired(undefined)).toBe(true);
+    expect(isCheckoutTasksRequired(null)).toBe(true);
+    expect(isCheckoutTasksRequired("true")).toBe(true);
+    expect(isCheckoutTasksRequired("false")).toBe(false);
+    expect(isCheckoutTasksRequired("FALSE")).toBe(false);
   });
 });

@@ -13,7 +13,7 @@ import { startOfDay } from "date-fns";
 import { MapPin, Clock, Camera, CheckCircle2, AlertCircle, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-import { formatWorkedDuration, getWorkProgress, isManualLocationAllowed } from "@/lib/attendance-utils";
+import { formatWorkedDuration, getWorkProgress, isCheckoutTasksRequired, isManualLocationAllowed } from "@/lib/attendance-utils";
 import { accuracyLevel, isLikelyNetworkFix, sampleBestPosition } from "@/lib/geolocation";
 import { GpsHint } from "@/components/attendance/gps-hint";
 import { DAY_PERIOD_LABELS, EXCEPTION_TYPE_LABELS } from "@/lib/attendance-exception";
@@ -97,6 +97,7 @@ export function AttendanceCard() {
   }), [settings]);
 
   const allowManualLocation = isManualLocationAllowed(settings?.allow_manual_location);
+  const requireCheckoutTasks = isCheckoutTasksRequired(settings?.require_checkout_tasks);
   
   // ใช้ useMemo เพื่อป้องกันการสร้าง Date ใหม่ทุกครั้งที่เรนเดอร์ (แก้ปัญหาลูป)
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -267,7 +268,7 @@ export function AttendanceCard() {
   };
 
   const handleCheckOut = async () => {
-    if (!tasks || tasks.trim() === "") {
+    if (requireCheckoutTasks && (!tasks || tasks.trim() === "")) {
       toast.error("กรุณาระบุสรุปงานที่ทำในวันนี้ก่อนลงเวลาออก");
       return;
     }
@@ -584,7 +585,12 @@ export function AttendanceCard() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-lg font-bold text-slate-800">
-                    สรุปงานที่ทำในวันนี้ <span className="text-rose-500">*</span>
+                    สรุปงานที่ทำในวันนี้{" "}
+                    {requireCheckoutTasks ? (
+                      <span className="text-rose-500">*</span>
+                    ) : (
+                      <span className="text-xs font-normal text-slate-400">(ไม่บังคับ)</span>
+                    )}
                   </Label>
                   {todayPlan && tasks !== todayPlan && (
                     <button

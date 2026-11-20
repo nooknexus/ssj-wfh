@@ -7,6 +7,10 @@ export const isManualLocationAllowed = (settingValue?: string | null): boolean =
   return settingValue.toLowerCase() !== "false";
 };
 
+/** บังคับกรอกสรุปงานที่ทำในวันนี้ก่อนลงเวลาออก: ปิดเฉพาะเมื่อตั้งค่าเป็น "false" (ไม่มีค่า = บังคับ) */
+export const isCheckoutTasksRequired = (settingValue?: string | null): boolean =>
+  (settingValue ?? "").toLowerCase() !== "false";
+
 export const DEFAULT_WORKING_TIME = "08:30";
 export const WORK_DAY_HOURS = 8;
 /** วันที่ลา/ไปราชการครึ่งวัน (ช่วงเช้า 08:30–12:00 หรือช่วงบ่าย 13:00–16:30) */

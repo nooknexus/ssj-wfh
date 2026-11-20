@@ -17,6 +17,7 @@ import { findApprovedExceptionForDay } from "../services/attendance-exception";
 import { buildMonthlyAttendanceReport } from "../services/monthly-attendance-report";
 import { parseReportMonth } from "@/lib/attendance-report";
 import { summarizeMonthToDate, summarizeTodayAttendance } from "@/lib/attendance-overview";
+import { isCheckoutTasksRequired } from "@/lib/attendance-utils";
 
 const getTimeSetting = async (db: Pick<PrismaClient, "systemSetting">, key: string, fallback: string) =>
   (await db.systemSetting.findUnique({ where: { setting_key: key } }))?.setting_value || fallback;
@@ -183,13 +184,19 @@ export const attendanceRouter = createTRPCRouter({
         throw new Error("วันนี้คุณลงเวลาออกงานไปแล้ว");
       }
 
+      const tasks = input.tasks?.trim() || null;
+      const requireTasksSetting = await ctx.db.systemSetting.findUnique({ where: { setting_key: "require_checkout_tasks" } });
+      if (!tasks && isCheckoutTasksRequired(requireTasksSetting?.setting_value)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "กรุณาระบุสรุปงานที่ทำในวันนี้ก่อนลงเวลาออก" });
+      }
+
       const record = await ctx.db.attendanceRecord.update({
         where: { id: existing.id },
         data: {
           check_out_time: today,
           check_out_lat: input.lat,
           check_out_lng: input.lng,
-          tasks: input.tasks,
+          tasks,
           mission_detail: input.missionDetail,
         },
       });

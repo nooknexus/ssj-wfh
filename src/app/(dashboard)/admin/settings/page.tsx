@@ -154,6 +154,21 @@ export default function AdminSettingsPage() {
                   onCheckedChange={() => handleToggle("allow_manual_location")}
                 />
               </div>
+              <div className="mt-3 flex items-center justify-between p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="space-y-0.5 pr-3">
+                  <Label htmlFor="require_checkout_tasks" className="font-medium text-slate-800 text-sm cursor-pointer">
+                    บังคับกรอกสรุปงานที่ทำในวันนี้
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    ต้องกรอก &quot;สรุปงานที่ทำในวันนี้&quot; ก่อนลงเวลาออกงาน (หากปิด ผู้ใช้ลงเวลาออกได้โดยไม่ต้องกรอก)
+                  </p>
+                </div>
+                <Switch
+                  id="require_checkout_tasks"
+                  checked={formData.require_checkout_tasks !== "false"}
+                  onCheckedChange={() => handleToggle("require_checkout_tasks")}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

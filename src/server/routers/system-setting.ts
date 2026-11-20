@@ -29,6 +29,7 @@ export const systemSettingRouter = createTRPCRouter({
       office_lat: "16.8173716",
       office_lng: "100.2584649",
       allow_manual_location: "true",
+      require_checkout_tasks: "true",
     };
 
     return { ...defaults, ...settingsMap };

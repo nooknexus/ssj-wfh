@@ -5,6 +5,12 @@ vi.mock("../utils/holidays", () => ({
   isHoliday: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/moph-alert", () => ({
+  sendMophAlert: vi.fn(),
+  getCheckInFlexMessage: vi.fn(),
+  getCheckOutFlexMessage: vi.fn(),
+}));
+
 import { attendanceRouter } from "./attendance";
 
 const createDb = (departmentId: number | null) => {
@@ -114,3 +120,38 @@ describe("attendance.updateRemark", () => {
   });
 });
 
+describe("attendance.checkOut work summary", () => {
+  const dbWith = (requireTasks: string | null) => {
+    const update = vi.fn().mockResolvedValue({ id: 4 });
+    return {
+      update,
+      db: {
+        attendanceRecord: { findFirst: vi.fn().mockResolvedValue({ id: 4, check_out_time: null }), update },
+        systemSetting: {
+          findUnique: vi.fn(({ where }: { where: { setting_key: string } }) =>
+            Promise.resolve(where.setting_key === "require_checkout_tasks" && requireTasks !== null ? { setting_value: requireTasks } : null),
+          ),
+        },
+        user: { findUnique: vi.fn().mockResolvedValue(null) },
+      },
+    };
+  };
+
+  it("refuses to check out without a summary while it is required", async () => {
+    const { db, update } = dbWith(null);
+    await expect(createCaller(["staff"], db).checkOut({ tasks: "   " })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("allows checking out without a summary when it is switched off", async () => {
+    const { db, update } = dbWith("false");
+    await createCaller(["staff"], db).checkOut({ tasks: "" });
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tasks: null }) }));
+  });
+
+  it("still saves a summary when one is given", async () => {
+    const { db, update } = dbWith("true");
+    await createCaller(["staff"], db).checkOut({ tasks: "  ประชุมทีม  " });
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tasks: "ประชุมทีม" }) }));
+  });
+});

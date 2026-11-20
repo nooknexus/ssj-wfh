@@ -2,6 +2,9 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { startOfDay, endOfDay } from "date-fns";
+import { mergeRecentRequests } from "@/lib/recent-requests";
+
+const RECENT_REQUEST_LIMIT = 3;
 
 export const dashboardRouter = createTRPCRouter({
   getStats: protectedProcedure.query(async ({ ctx }) => {
@@ -48,16 +51,25 @@ export const dashboardRouter = createTRPCRouter({
       take: 3,
     });
 
-    const recentLeaves = await ctx.db.leaveRequest.findMany({
-      where: { user_id: userId },
-      include: { leave_type: true },
-      orderBy: { created_at: "desc" },
-      take: 3,
-    });
+    // คำขอล่าสุดของตัวเอง: แจ้งไปราชการ/แจ้งลาจากแผนงาน และคำขอ WFH
+    const [recentExceptions, recentWfh] = await Promise.all([
+      ctx.db.attendanceException.findMany({
+        where: { user_id: userId },
+        select: { id: true, type: true, date: true, period: true, status: true, created_at: true },
+        orderBy: { created_at: "desc" },
+        take: RECENT_REQUEST_LIMIT,
+      }),
+      ctx.db.wfhRequest.findMany({
+        where: { user_id: userId },
+        select: { id: true, start_date: true, end_date: true, status: true, created_at: true },
+        orderBy: { created_at: "desc" },
+        take: RECENT_REQUEST_LIMIT,
+      }),
+    ]);
 
     return {
       attendance: recentAttendance,
-      leaves: recentLeaves,
+      requests: mergeRecentRequests(recentExceptions, recentWfh, RECENT_REQUEST_LIMIT),
     };
   }),
 });

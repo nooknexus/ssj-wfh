@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, UserCheck, Clock } from "lucide-react";
+import { ClipboardCheck, UserCheck, Clock } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -10,6 +10,25 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AttendanceSummaryCard } from "@/components/attendance/attendance-summary-card";
 import { ATTENDANCE_REPORT_ROLES, hasAnyRole } from "@/lib/roles";
+import { DAY_PERIOD_LABELS, EXCEPTION_STATUS_LABELS } from "@/lib/attendance-exception";
+import { REQUEST_KIND_LABELS, type RecentRequest, type RequestKind } from "@/lib/recent-requests";
+
+const REQUEST_KIND_BADGE: Record<RequestKind, string> = {
+  official_trip: "bg-teal-100 text-teal-700",
+  leave: "bg-sky-100 text-sky-700",
+  wfh: "bg-purple-100 text-purple-700",
+};
+
+/** วันที่ของคำขอ: วันเดียวแสดงครั้งเดียว ช่วงหลายวันแสดงต้น–ท้าย และต่อท้ายช่วงของวันถ้ามี */
+const formatRequestDates = (request: RecentRequest) => {
+  const start = new Date(request.startDate);
+  const end = new Date(request.endDate);
+  const dates =
+    start.toDateString() === end.toDateString()
+      ? format(start, "d MMM yy", { locale: th })
+      : `${format(start, "d MMM", { locale: th })} – ${format(end, "d MMM yy", { locale: th })}`;
+  return request.period ? `${dates} (${DAY_PERIOD_LABELS[request.period]})` : dates;
+};
 
 export default function DashboardPage() {
   const { data: session } = trpc.auth.getSession.useQuery();
@@ -36,21 +55,12 @@ export default function DashboardPage() {
     }
   };
 
-  const getLeaveStatusBadge = (status: string) => {
+  const getRequestStatusBadge = (status: string) => {
     switch (status) {
       case "pending": return "bg-amber-100 text-amber-700";
       case "approved": return "bg-green-100 text-green-700";
       case "rejected": return "bg-red-100 text-red-700";
       default: return "bg-slate-100 text-slate-700";
-    }
-  };
-
-  const getLeaveStatusLabel = (status: string) => {
-    switch (status) {
-      case "pending": return "รออนุมัติ";
-      case "approved": return "อนุมัติแล้ว";
-      case "rejected": return "ไม่อนุมัติ";
-      default: return status;
     }
   };
 
@@ -133,34 +143,38 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Module 2: Leave Management */}
+        {/* Module 2: คำขออนุมัติของตัวเอง (แจ้งไปราชการ / แจ้งลา / WFH) */}
         <Card className="border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-amber-500" />
-              ประวัติการขออนุญาตลาล่าสุด
+              <ClipboardCheck className="w-5 h-5 text-amber-500" />
+              การขออนุมัติล่าสุด
             </CardTitle>
+            <p className="text-xs text-slate-500">แจ้งไปราชการ · แจ้งลา · ขออนุมัติ WFH</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentLoading ? (
                 <p className="text-sm text-slate-500">กำลังโหลด...</p>
-              ) : recent?.leaves.length ? (
-                recent.leaves.map((leave) => (
-                  <div key={leave.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900">
-                        {leave.leave_type.name} ({format(new Date(leave.start_date), "d MMM", { locale: th })} - {format(new Date(leave.end_date), "d MMM", { locale: th })})
+              ) : recent?.requests.length ? (
+                recent.requests.map((request) => (
+                  <div key={request.key} className="flex items-center justify-between gap-3 border-b pb-2 last:border-0">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900">
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full", REQUEST_KIND_BADGE[request.kind])}>
+                          {REQUEST_KIND_LABELS[request.kind]}
+                        </span>
+                        {formatRequestDates(request)}
                       </div>
-                      <div className="text-xs text-slate-500">ยื่นคำขอเมื่อ {format(new Date(leave.created_at), "d MMM yy", { locale: th })}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">ยื่นคำขอเมื่อ {format(new Date(request.createdAt), "d MMM yy", { locale: th })}</div>
                     </div>
-                    <div className={`text-xs px-2 py-1 rounded-full ${getLeaveStatusBadge(leave.status)}`}>
-                      {getLeaveStatusLabel(leave.status)}
+                    <div className={cn("shrink-0 text-xs px-2 py-1 rounded-full", getRequestStatusBadge(request.status))}>
+                      {EXCEPTION_STATUS_LABELS[request.status]}
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500 italic">ไม่พบประวัติการลา</p>
+                <p className="text-sm text-slate-500 italic">ยังไม่มีการขออนุมัติ</p>
               )}
             </div>
           </CardContent>

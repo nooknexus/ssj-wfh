@@ -278,7 +278,7 @@ export const attendanceRouter = createTRPCRouter({
         }),
         ctx.db.attendanceException.findMany({
           where: { status: "approved", date: { gte: start, lte: end }, user: { status: "active", ...inScope } },
-          select: { user_id: true, period: true },
+          select: { user_id: true, period: true, type: true },
         }),
         getThaiHolidaysForRange(today, today),
         getTimeSetting(ctx.db, "working_time", "08:30"),
@@ -324,7 +324,7 @@ export const attendanceRouter = createTRPCRouter({
         }),
         ctx.db.attendanceException.findMany({
           where: { user_id: userId, status: "approved", date: { gte: monthStart, lte: end } },
-          select: { date: true, period: true },
+          select: { date: true, period: true, type: true },
         }),
         getThaiHolidaysForRange(monthStart, today),
         getTimeSetting(ctx.db, "working_time", "08:30"),

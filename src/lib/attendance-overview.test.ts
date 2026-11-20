@@ -30,6 +30,7 @@ describe("summarizeTodayAttendance", () => {
       late: 0,
       outsideArea: 0,
       onLeave: 0,
+      officialTrip: 0,
     });
   });
 
@@ -53,7 +54,7 @@ describe("summarizeTodayAttendance", () => {
   it("should move the late threshold to the afternoon for an approved morning off", () => {
     const summary = summarizeTodayAttendance(baseInput({
       records: [{ user_id: 1, work_type: "office", check_in_time: at("12:50"), ...NEAR }],
-      exceptions: [{ user_id: 1, period: "morning" }],
+      exceptions: [{ user_id: 1, period: "morning", type: "leave" }],
     }));
     expect(summary).toMatchObject({ onTime: 1, late: 0 });
   });
@@ -80,13 +81,36 @@ describe("summarizeTodayAttendance", () => {
     const summary = summarizeTodayAttendance(baseInput({
       onLeaveUserIds: [1],
       exceptions: [
-        { user_id: 2, period: "full" },
-        { user_id: 3, period: "morning" },
-        { user_id: 3, period: "afternoon" },
-        { user_id: 4, period: "morning" },
+        { user_id: 2, period: "full", type: "leave" },
+        { user_id: 3, period: "morning", type: "leave" },
+        { user_id: 3, period: "afternoon", type: "leave" },
+        { user_id: 4, period: "morning", type: "leave" },
       ],
     }));
-    expect(summary).toMatchObject({ onLeave: 3, notCheckedIn: 2 });
+    expect(summary).toMatchObject({ onLeave: 3, notCheckedIn: 2, officialTrip: 0 });
+  });
+
+  it("should count a full-day official trip from the plan separately from leave", () => {
+    const summary = summarizeTodayAttendance(baseInput({
+      exceptions: [
+        { user_id: 1, period: "full", type: "official_trip" },
+        { user_id: 2, period: "morning", type: "official_trip" },
+        { user_id: 2, period: "afternoon", type: "official_trip" },
+        { user_id: 3, period: "morning", type: "official_trip" },
+        { user_id: 4, period: "morning", type: "official_trip" },
+        { user_id: 4, period: "afternoon", type: "leave" },
+      ],
+    }));
+    // คนที่ 3 ไปราชการแค่ครึ่งเช้า ยังต้องลงเวลาช่วงบ่าย, คนที่ 4 มีลาปนอยู่จึงนับเป็นลา
+    expect(summary).toMatchObject({ officialTrip: 2, onLeave: 1, notCheckedIn: 2 });
+  });
+
+  it("should count an approved leave request as leave even with an official trip in the plan", () => {
+    const summary = summarizeTodayAttendance(baseInput({
+      onLeaveUserIds: [1],
+      exceptions: [{ user_id: 1, period: "full", type: "official_trip" }],
+    }));
+    expect(summary).toMatchObject({ onLeave: 1, officialTrip: 0 });
   });
 
   it("should count someone who checked in despite a leave as checked in", () => {
@@ -114,7 +138,7 @@ describe("summarizeMonthToDate", () => {
     today: day(13, "10:00"),
     records: [] as TodayOverviewInput["records"],
     leaves: [] as { start_date: Date; end_date: Date }[],
-    exceptions: [] as { date: Date; period: "full" | "morning" | "afternoon" }[],
+    exceptions: [] as { date: Date; period: "full" | "morning" | "afternoon"; type: "leave" | "official_trip" }[],
     isHolidayDate: () => false,
     workingTime: "08:30",
     afternoonStart: "13:00",
@@ -150,9 +174,13 @@ describe("summarizeMonthToDate", () => {
     const summary = summarizeMonthToDate({
       ...base,
       leaves: [{ start_date: day(5, "00:00"), end_date: day(7, "00:00") }],
-      exceptions: [{ date: day(8), period: "full" }, { date: day(9), period: "morning" }],
+      exceptions: [
+        { date: day(8), period: "full", type: "leave" },
+        { date: day(9), period: "morning", type: "leave" },
+        { date: day(12), period: "full", type: "official_trip" },
+      ],
     });
-    expect(summary).toMatchObject({ onLeave: 4, notCheckedIn: 4 });
+    expect(summary).toMatchObject({ onLeave: 4, officialTrip: 1, notCheckedIn: 3 });
   });
 
   it("should skip public holidays", () => {

@@ -50,8 +50,17 @@ const TILES: {
     label: { team: "ลางาน", self: "ลางาน" },
     tone: { tile: "bg-sky-50 border-sky-100", dot: "bg-sky-500", value: "text-sky-700" },
     hint: {
-      team: "ใบลาที่อนุมัติแล้ว หรือแจ้งลา/ไปราชการเต็มวันในแผนงาน",
-      self: "วันที่มีใบลาที่อนุมัติแล้ว หรือแจ้งลา/ไปราชการเต็มวันในแผนงาน",
+      team: "ใบลาที่อนุมัติแล้ว หรือแจ้งลาเต็มวันในแผนงาน",
+      self: "วันที่มีใบลาที่อนุมัติแล้ว หรือแจ้งลาเต็มวันในแผนงาน",
+    },
+  },
+  {
+    key: "officialTrip",
+    label: { team: "ไปราชการ", self: "ไปราชการ" },
+    tone: { tile: "bg-teal-50 border-teal-100", dot: "bg-teal-500", value: "text-teal-700" },
+    hint: {
+      team: "แจ้งไปราชการเต็มวันในแผนงานที่อนุมัติแล้ว",
+      self: "วันที่แจ้งไปราชการเต็มวันในแผนงานที่อนุมัติแล้ว",
     },
   },
 ];
@@ -114,7 +123,7 @@ export function AttendanceSummaryCard({ scope }: { scope: Scope }) {
             <p className="text-sm leading-relaxed">{errorMessage}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 xl:grid-cols-6">
             {TILES.map((tile) => (
               <div
                 key={tile.key}

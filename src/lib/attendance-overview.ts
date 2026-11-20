@@ -1,4 +1,4 @@
-import { getLateThreshold, mergeApprovedPeriods, type DayPeriod } from "./attendance-exception";
+import { getLateThreshold, mergeApprovedPeriods, type DayPeriod, type ExceptionType } from "./attendance-exception";
 
 export type TodayOverviewRecord = {
   user_id: number;
@@ -15,7 +15,7 @@ export type TodayOverviewInput = {
   /** ผู้ที่มีใบลาอนุมัติแล้วครอบคลุมวันนี้ */
   onLeaveUserIds: readonly number[];
   /** ลา/ไปราชการจากแผนงานที่อนุมัติแล้วของวันนี้ */
-  exceptions: readonly { user_id: number; period: DayPeriod }[];
+  exceptions: readonly { user_id: number; period: DayPeriod; type: ExceptionType }[];
   date: Date;
   workingTime: string;
   afternoonStart: string;
@@ -30,7 +30,10 @@ export type TodayOverview = {
   late: number;
   /** ลงเวลาแบบเข้าสำนักงานแต่อยู่นอกรัศมี (นับซ้อนกับทันเวลา/มาสาย) */
   outsideArea: number;
+  /** ใบลาที่อนุมัติแล้ว หรือแจ้งลาเต็มวันในแผนงาน */
   onLeave: number;
+  /** แจ้งไปราชการเต็มวันในแผนงาน (ไม่มีลาปน) */
+  officialTrip: number;
 };
 
 /** ระยะห่างระหว่างสองพิกัด (เมตร) ตามสูตร Haversine */
@@ -45,21 +48,30 @@ export const distanceInMeters = (lat1: number, lng1: number, lat2: number, lng2:
 };
 
 /**
- * ภาพรวมการลงเวลาวันนี้: แต่ละคนอยู่ในกลุ่มเดียวจาก ทันเวลา / มาสาย / ลางาน / ยังไม่ลงเวลา
+ * ภาพรวมการลงเวลาวันนี้: แต่ละคนอยู่ในกลุ่มเดียวจาก ทันเวลา / มาสาย / ลางาน / ไปราชการ / ยังไม่ลงเวลา
  * เกณฑ์สายเหมือนรายงาน (Onsite และวันหยุดไม่นับสาย, ได้รับอนุมัติครึ่งเช้าเลื่อนไปช่วงบ่าย)
  */
 export const summarizeTodayAttendance = (input: TodayOverviewInput): TodayOverview => {
   const recordByUser = new Map(input.records.map((record) => [record.user_id, record]));
   const onLeave = new Set(input.onLeaveUserIds);
-  const periodsByUser = new Map<number, DayPeriod[]>();
+  const exceptionsByUser = new Map<number, TodayOverviewInput["exceptions"][number][]>();
   for (const exception of input.exceptions) {
-    periodsByUser.set(exception.user_id, [...(periodsByUser.get(exception.user_id) ?? []), exception.period]);
+    exceptionsByUser.set(exception.user_id, [...(exceptionsByUser.get(exception.user_id) ?? []), exception]);
   }
 
-  const summary: TodayOverview = { total: input.userIds.length, notCheckedIn: 0, onTime: 0, late: 0, outsideArea: 0, onLeave: 0 };
+  const summary: TodayOverview = {
+    total: input.userIds.length,
+    notCheckedIn: 0,
+    onTime: 0,
+    late: 0,
+    outsideArea: 0,
+    onLeave: 0,
+    officialTrip: 0,
+  };
 
   for (const userId of input.userIds) {
-    const period = mergeApprovedPeriods(periodsByUser.get(userId) ?? []);
+    const exceptions = exceptionsByUser.get(userId) ?? [];
+    const period = mergeApprovedPeriods(exceptions.map((exception) => exception.period));
     const record = recordByUser.get(userId);
 
     if (record?.check_in_time) {
@@ -75,8 +87,10 @@ export const summarizeTodayAttendance = (input: TodayOverviewInput): TodayOvervi
       ) {
         summary.outsideArea += 1;
       }
-    } else if (onLeave.has(userId) || period === "full") {
+    } else if (onLeave.has(userId) || (period === "full" && exceptions.some((exception) => exception.type === "leave"))) {
       summary.onLeave += 1;
+    } else if (period === "full") {
+      summary.officialTrip += 1;
     } else {
       summary.notCheckedIn += 1;
     }
@@ -92,7 +106,7 @@ export type MonthToDateInput = {
   /** ใบลาที่อนุมัติแล้วที่คาบเกี่ยวเดือนนี้ */
   leaves: readonly { start_date: Date; end_date: Date }[];
   /** ลา/ไปราชการจากแผนงานที่อนุมัติแล้วในเดือนนี้ */
-  exceptions: readonly { date: Date; period: DayPeriod }[];
+  exceptions: readonly { date: Date; period: DayPeriod; type: ExceptionType }[];
   isHolidayDate: (date: Date) => boolean;
   workingTime: string;
   afternoonStart: string;
@@ -106,7 +120,7 @@ const dayKey = (date: Date) => date.getFullYear() * 10000 + (date.getMonth() + 1
  * ใช้เกณฑ์เดียวกับภาพรวมวันนี้ทีละวัน ส่วน "ยังไม่ลงเวลา" ของวันนี้ไม่นับ เพราะวันยังไม่จบ
  */
 export const summarizeMonthToDate = (input: MonthToDateInput): TodayOverview => {
-  const summary: TodayOverview = { total: 0, notCheckedIn: 0, onTime: 0, late: 0, outsideArea: 0, onLeave: 0 };
+  const summary: TodayOverview = { total: 0, notCheckedIn: 0, onTime: 0, late: 0, outsideArea: 0, onLeave: 0, officialTrip: 0 };
   const todayKey = dayKey(input.today);
 
   for (let date = 1; date <= input.today.getDate(); date++) {
@@ -119,7 +133,7 @@ export const summarizeMonthToDate = (input: MonthToDateInput): TodayOverview => 
       userIds: [0],
       records: input.records.filter((record) => record.check_in_time && dayKey(record.check_in_time) === key).map((record) => ({ ...record, user_id: 0 })),
       onLeaveUserIds: input.leaves.some((leave) => dayKey(leave.start_date) <= key && key <= dayKey(leave.end_date)) ? [0] : [],
-      exceptions: input.exceptions.filter((exception) => dayKey(exception.date) === key).map((exception) => ({ user_id: 0, period: exception.period })),
+      exceptions: input.exceptions.filter((exception) => dayKey(exception.date) === key).map((exception) => ({ user_id: 0, period: exception.period, type: exception.type })),
       date: day,
       workingTime: input.workingTime,
       afternoonStart: input.afternoonStart,
@@ -133,6 +147,7 @@ export const summarizeMonthToDate = (input: MonthToDateInput): TodayOverview => 
     summary.late += daySummary.late;
     summary.outsideArea += daySummary.outsideArea;
     summary.onLeave += daySummary.onLeave;
+    summary.officialTrip += daySummary.officialTrip;
   }
 
   return summary;

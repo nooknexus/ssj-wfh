@@ -1,3 +1,5 @@
+import { splitThaiTitle } from "@/lib/person-name";
+
 const THAID_DEFAULT_WELL_KNOWN_URL =
   "https://imauth.bora.dopa.go.th/api/v2/.well-known/openid-configuration";
 
@@ -137,17 +139,22 @@ function mergeClaims(idTokenClaims: ThaidClaims, userInfoClaims: ThaidClaims) {
   } as ThaidClaims;
 }
 
-function toProfile(claims: ThaidClaims): ThaidProfile {
+export function toProfile(claims: ThaidClaims): ThaidProfile {
+  // claim "name" ของ ThaiD มีคำนำหน้าติดมา (เช่น "นาย นัฐพร สุราษฎร์") จึงใช้ชื่อ + นามสกุลก่อน
+  // และแยกคำนำหน้าออก ให้ name_th / title_th เหมือนกับที่ได้จาก ProviderID
+  const { title: titleTh, name: nameTh } = splitThaiTitle(
+    getFullName(claims.given_name, claims.family_name) ?? toOptionalString(claims.name),
+    toOptionalString(claims.title),
+  );
   return {
     pid: toOptionalString(claims.pid),
     subject: toOptionalString(claims.sub),
-    nameTh:
-      toOptionalString(claims.name) ?? getFullName(claims.given_name, claims.family_name),
+    nameTh,
     nameEng:
       toOptionalString(claims.name_en) ??
       getFullName(claims.given_name_en, claims.family_name_en),
     email: toOptionalString(claims.email),
-    titleTh: toOptionalString(claims.title),
+    titleTh,
     birthdate: toOptionalString(claims.birthdate),
   };
 }

@@ -1,3 +1,5 @@
+import { splitThaiTitle } from "@/lib/person-name";
+
 const HEALTH_AUTH_ENDPOINT = "https://moph.id.th/oauth/redirect";
 
 const HEALTH_CLIENT_ID = process.env.HEALTH_CLIENT_ID;
@@ -245,18 +247,22 @@ export async function authenticateWithMOPH(code: string): Promise<MophSsoProfile
 
   const profile = getProfilePayload(profilePayload);
   const primaryOrganization = profile.organization?.[0];
+  // กันกรณีชื่อมีคำนำหน้าติดมา ให้ name_th / title_th เหมือนกับที่ได้จาก ThaiD
+  const { title: titleTh, name: nameTh } = splitThaiTitle(
+    profile.name_th ??
+      getFullName(profile.firstname_th, profile.lastname_th) ??
+      getFullName(jwtDetails.name, jwtDetails.surname),
+    profile.title_th ?? jwtDetails.name_prefix,
+  );
 
   return {
     username: jwtDetails.id_card ?? jwtPayload.pid ?? jwtDetails.pid,
     providerId: jwtPayload.sub,
     hashCid: profile.hash_cid ?? jwtDetails.hash_id_card,
-    nameTh:
-      profile.name_th ??
-      getFullName(profile.firstname_th, profile.lastname_th) ??
-      getFullName(jwtDetails.name, jwtDetails.surname),
+    nameTh,
     nameEng: profile.name_eng ?? getFullName(profile.firstname_en, profile.lastname_en),
     email: profile.email ?? jwtPayload.email,
-    titleTh: profile.title_th ?? jwtDetails.name_prefix,
+    titleTh,
     position: primaryOrganization?.position,
     hcode: primaryOrganization?.hcode,
     hname: primaryOrganization?.hname_th ?? primaryOrganization?.hname_eng,

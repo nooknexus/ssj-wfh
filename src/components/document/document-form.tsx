@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatThaiFullName } from "@/lib/person-name";
 import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
@@ -246,8 +247,7 @@ export function DocumentForm({ docType, onSuccess, onCancel }: DocumentFormProps
             ) : (
               users?.map((user) => (
                 <SelectItem key={user.id} value={user.id.toString()}>
-                  {user.title_th ? `${user.title_th} ` : ""}
-                  {user.name_th ?? user.name_eng ?? `ID: ${user.id}`}
+                  {formatThaiFullName(user.title_th, user.name_th) || user.name_eng || `ID: ${user.id}`}
                   {user.department?.name ? ` — ${user.department.name}` : ""}
                 </SelectItem>
               ))

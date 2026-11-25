@@ -8,6 +8,7 @@ import {
 } from "@/lib/attendance-report";
 import { getThaiHolidaysForRange, isHoliday } from "../utils/holidays";
 import { fetchPersonnelTypes } from "./personnel-type";
+import { formatThaiFullName } from "@/lib/person-name";
 
 export type MonthlyAttendanceReport = {
   departmentName: string;
@@ -58,7 +59,7 @@ export const buildMonthlyAttendanceReport = async (
 
   const rows = users.map((user) => ({
     userId: user.id,
-    name: [user.title_th, user.name_th ?? user.name_eng].filter(Boolean).join("") || `#${user.id}`,
+    name: formatThaiFullName(user.title_th, user.name_th) || user.name_eng?.trim() || `#${user.id}`,
     personnelType: typeOf(user.username),
     ...buildMonthlyReportRow({
       year: params.year,

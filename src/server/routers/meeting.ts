@@ -7,6 +7,7 @@ import {
 } from "@/lib/conference-booking";
 import { CONFERENCE_ADMIN_ROLES } from "@/lib/roles";
 import { buildBookingPendingFlex, sendMorPromNotify } from "@/lib/morprom-notify";
+import { formatThaiFullName } from "@/lib/person-name";
 import { createTRPCRouter, protectedProcedure, roleProcedure } from "../trpc";
 
 const statusSchema = z.enum(["pending", "approved", "rejected", "cancelled"]);
@@ -126,7 +127,7 @@ export const meetingRouter = createTRPCRouter({
           startAt: booking.start_at,
           endAt: booking.end_at,
           attendees: booking.attendees,
-          requesterName: [requester?.title_th, requester?.name_th].filter(Boolean).join("") || requester?.name_eng,
+          requesterName: formatThaiFullName(requester?.title_th, requester?.name_th) || requester?.name_eng,
           departmentName: requester?.department?.name,
           bookedAt: booking.created_at,
         }),

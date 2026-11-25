@@ -1,6 +1,7 @@
 // แจ้งเตือนเข้ากลุ่มผ่าน MorProm Notify (คนละบริการกับ MOPH Alert ใน moph-alert.ts ที่ส่งหารายบุคคล)
 
 import { APP_CONFIG } from "@/lib/constants";
+import { formatThaiFullName } from "@/lib/person-name";
 import { PLATFORM_LABELS, type ConferencePlatform } from "@/lib/conference-booking";
 
 const MORPROM_NOTIFY_URL = "https://morpromt2f.moph.go.th/api/notify/send";
@@ -141,7 +142,7 @@ export type NewUserInfo = {
 
 /** แจ้งผู้ดูแลว่ามีผู้ใช้ใหม่ลงทะเบียนและรออนุมัติ */
 export function buildNewUserFlex(user: NewUserInfo) {
-  const fullName = [user.titleTh, user.nameTh].filter(Boolean).join("") || user.nameEng?.trim() || "";
+  const fullName = formatThaiFullName(user.titleTh, user.nameTh) || user.nameEng?.trim() || "";
 
   return pendingApprovalFlex({
     altText: `มีผู้ใช้ใหม่ลงทะเบียน: ${fullName || "ไม่ระบุชื่อ"}`,

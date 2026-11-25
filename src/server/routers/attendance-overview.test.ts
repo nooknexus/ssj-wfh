@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../utils/holidays", () => ({
   getThaiHolidaysForRange: vi.fn().mockResolvedValue([]),
@@ -153,5 +153,53 @@ describe("attendance.checkOut work summary", () => {
     const { db, update } = dbWith("true");
     await createCaller(["staff"], db).checkOut({ tasks: "  ประชุมทีม  " });
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tasks: "ประชุมทีม" }) }));
+  });
+});
+
+describe("attendance.checkIn date before 07:00 (UTC is still the previous day)", () => {
+  const originalTz = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = "Asia/Bangkok";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-22T23:12:00Z")); // 06:12 น. วันที่ 23 พ.ย. เวลาไทย
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTz;
+  });
+
+  const dbFor = () => {
+    const create = vi.fn().mockResolvedValue({ id: 1 });
+    const wfhFindFirst = vi.fn().mockResolvedValue({ id: 3 });
+    return {
+      create,
+      wfhFindFirst,
+      db: {
+        attendanceRecord: { findFirst: vi.fn().mockResolvedValue(null), create },
+        attendanceException: { findMany: vi.fn().mockResolvedValue([]) },
+        wfhRequest: { findFirst: wfhFindFirst },
+        systemSetting: { findUnique: vi.fn().mockResolvedValue(null) },
+        user: { findUnique: vi.fn().mockResolvedValue(null) },
+      },
+    };
+  };
+
+  it("stores the Thai calendar date in the DATE column", async () => {
+    const { db, create } = dbFor();
+    await createCaller(["staff"], db).checkIn({ workType: "office" });
+
+    const data = create.mock.calls[0][0].data;
+    // คอลัมน์ DATE เก็บวันตาม UTC จึงต้องเป็นวันที่ 23 เมื่อแปลงเป็น UTC
+    expect(data.date.toISOString().slice(0, 10)).toBe("2026-11-23");
+    expect(data.check_in_time.toISOString()).toBe("2026-11-22T23:12:00.000Z");
+  });
+
+  it("finds a WFH request approved for today", async () => {
+    const { db, wfhFindFirst } = dbFor();
+    await createCaller(["staff"], db).checkIn({ workType: "wfh" });
+
+    const where = wfhFindFirst.mock.calls[0][0].where;
+    // start_date (DATE วันที่ 23) ต้องอยู่ในเงื่อนไข: เทียบกับสิ้นวันไทย ไม่ใช่เวลาปัจจุบัน
+    expect(where.start_date.lte.getTime()).toBeGreaterThanOrEqual(new Date("2026-11-23T00:00:00Z").getTime());
   });
 });

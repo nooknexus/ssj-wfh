@@ -10,6 +10,7 @@ import {
   DEFAULT_AFTERNOON_START,
   blocksCheckIn,
   getLateThreshold,
+  normalizeToNoon,
   mergeApprovedPeriods,
   resolveExceptionStatus,
 } from "@/lib/attendance-exception";
@@ -100,8 +101,9 @@ export const attendanceRouter = createTRPCRouter({
           where: {
             user_id: userId,
             status: "approved",
-            start_date: { lte: today },
-            end_date: { gte: startOfDay(today) },
+            // start_date เป็นคอลัมน์ DATE: เทียบกับสิ้นวัน ไม่ใช่เวลาปัจจุบัน (ก่อน 07:00 น. เวลา UTC ยังเป็นเมื่อวาน)
+            start_date: { lte: end },
+            end_date: { gte: start },
           },
         });
 
@@ -113,7 +115,8 @@ export const attendanceRouter = createTRPCRouter({
       const record = await ctx.db.attendanceRecord.create({
         data: {
           user_id: userId,
-          date: today,
+          // คอลัมน์ DATE เก็บวันตามเวลา UTC: ใช้เที่ยงวันไม่ให้ลงเวลาก่อน 07:00 น. กลายเป็นวันก่อนหน้า
+          date: normalizeToNoon(today),
           work_type: input.workType,
           check_in_time: today,
           check_in_lat: input.lat,

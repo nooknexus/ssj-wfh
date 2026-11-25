@@ -43,3 +43,21 @@ describe("splitThaiTitle", () => {
     expect(splitThaiTitle(undefined, "นาย")).toEqual({ title: "นาย", name: undefined });
   });
 });
+
+describe("abbreviated titles", () => {
+  it("should not repeat an abbreviated title in the name", () => {
+    expect(formatThaiFullName("นางสาว", "น.ส. กมลฉัตร กุลกิติเกษ")).toBe("นางสาวกมลฉัตร กุลกิติเกษ");
+    expect(formatThaiFullName("นางสาว", "น.ส.ลินดา ประทุมทอง")).toBe("นางสาวลินดา ประทุมทอง");
+    expect(formatThaiFullName("นางสาว", "นส. ศุภสุตา สุขสินธารานนท์")).toBe("นางสาวศุภสุตา สุขสินธารานนท์");
+  });
+
+  it("should split an abbreviated title off and keep the full title", () => {
+    expect(splitThaiTitle("น.ส. เพียงฟ้า วงศ์คงเดช", "นางสาว")).toEqual({ title: "นางสาว", name: "เพียงฟ้า วงศ์คงเดช" });
+    expect(splitThaiTitle("น.ส. เมทิณี จัตุรภัทร์", undefined)).toEqual({ title: "นางสาว", name: "เมทิณี จัตุรภัทร์" });
+  });
+
+  it("should not cut a first name that only looks like a title", () => {
+    expect(splitThaiTitle("นายิกา ใจดี", "นางสาว")).toEqual({ title: "นางสาว", name: "นายิกา ใจดี" });
+    expect(formatThaiFullName("นาย", "นายิก ใจดี")).toBe("นายนายิก ใจดี");
+  });
+});

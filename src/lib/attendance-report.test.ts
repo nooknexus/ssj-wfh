@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMonthlyReportRow,
-  classifyLeaveType,
   countPersonnelTypes,
   formatDayList,
   formatThaiMonth,
@@ -48,16 +47,6 @@ describe("month helpers", () => {
   });
 });
 
-describe("classifyLeaveType", () => {
-  it("should map leave names to form columns", () => {
-    expect(classifyLeaveType("ลาพักผ่อน")).toBe("vacation");
-    expect(classifyLeaveType("ลาป่วย")).toBe("sick");
-    expect(classifyLeaveType("ลากิจ")).toBe("personal");
-    expect(classifyLeaveType("ลาคลอดบุตร")).toBe("personal");
-    expect(classifyLeaveType("ลาอุปสมบท")).toBe("personal");
-  });
-});
-
 describe("buildMonthlyReportRow", () => {
   it("should count every past working day without check-in as no check-in", () => {
     const row = buildMonthlyReportRow(base());
@@ -80,24 +69,25 @@ describe("buildMonthlyReportRow", () => {
       ],
     }));
     expect(row.columns.late).toEqual({ days: [1], total: 1 });
-    expect(row.noCheckOutDays).toEqual([2]);
+    expect(row.columns.noCheckOut).toEqual({ days: [2], total: 1 });
     expect(row.columns.noCheckIn.days).not.toContain(1);
   });
 
-  it("should count leaves by type, including half days, other types and leaves crossing months", () => {
+  it("should leave the leave columns blank and list leave days in the remark", () => {
     const row = buildMonthlyReportRow(base({
       leaves: [
-        { start_date: dbDate(9, 29), end_date: dbDate(10, 2), total_days: 4, leaveTypeName: "ลาพักผ่อน" },
-        { start_date: dbDate(10, 5), end_date: dbDate(10, 6), total_days: 2, leaveTypeName: "ลาป่วย" },
-        { start_date: dbDate(10, 7), end_date: dbDate(10, 7), total_days: 0.5, leaveTypeName: "ลากิจ" },
-        { start_date: dbDate(10, 12), end_date: dbDate(10, 12), total_days: 1, leaveTypeName: "ลาคลอดบุตร" },
+        { start_date: dbDate(9, 29), end_date: dbDate(10, 2), total_days: 4 },
+        { start_date: dbDate(10, 5), end_date: dbDate(10, 6), total_days: 2 },
+        { start_date: dbDate(10, 7), end_date: dbDate(10, 7), total_days: 0.5 },
+        { start_date: dbDate(10, 12), end_date: dbDate(10, 12), total_days: 1 },
       ],
     }));
-    expect(row.columns.vacation).toEqual({ days: [1, 2], total: 2 });
-    expect(row.columns.sick).toEqual({ days: [5, 6], total: 2 });
-    expect(row.columns.personal).toEqual({ days: [7, 12], total: 1.5 }); // ลากิจครึ่งวัน + ลาคลอดบุตร (ลาประเภทอื่นนับในช่องลากิจ)
+    // ประเภทลาให้เจ้าหน้าที่เขียนเองหลังพิมพ์ ระบบบอกเฉพาะวันที่ลาในหมายเหตุ
+    for (const column of ["vacation", "sick", "personal"] as const) {
+      expect(row.columns[column]).toEqual({ days: [], total: 0 });
+    }
     for (const day of [1, 2, 5, 6, 7, 12]) expect(row.columns.noCheckIn.days).not.toContain(day);
-    expect(row.remark).toBe("");
+    expect(row.remark).toBe("ลา 1, 2, 5, 6, 7 (ครึ่งวัน), 12"); // ลากิจวันที่ 7 ครึ่งวัน
   });
 
   it("should handle official trips and weekly-plan leave notices", () => {
@@ -111,7 +101,67 @@ describe("buildMonthlyReportRow", () => {
     expect(row.columns.officialTrip).toEqual({ days: [8, 14], total: 1.5 });
     expect(row.columns.noCheckIn.days).toContain(8); // ครึ่งวันที่เหลือไม่ได้ลงเวลา
     expect(row.columns.noCheckIn.days).not.toContain(9);
-    expect(row.remark).toBe("แจ้งลา(แผนงาน) 9");
+    expect(row.remark).toBe("ลา 9");
+  });
+
+  it("should list the users' own remarks by day after the leave days", () => {
+    const row = buildMonthlyReportRow(base({
+      attendance: [
+        { date: dbDate(10, 13), check_in_time: local(13, 8, 50), check_out_time: local(13, 16, 30), work_type: "office", remark: "  รถติดมาก " },
+        { date: dbDate(10, 1), check_in_time: local(1, 8, 0), check_out_time: local(1, 16, 30), work_type: "office", remark: "ประชุมนอกสถานที่" },
+        { date: dbDate(10, 2), check_in_time: local(2, 8, 0), check_out_time: local(2, 16, 30), work_type: "office", remark: "ประชุมนอกสถานที่" },
+        { date: dbDate(10, 5), check_in_time: local(5, 8, 0), check_out_time: local(5, 16, 30), work_type: "office", remark: "ประชุมนอกสถานที่" },
+        { date: dbDate(10, 6), check_in_time: local(6, 8, 0), check_out_time: local(6, 16, 30), work_type: "office", remark: "   " },
+      ],
+      exceptions: [{ date: dbDate(10, 9), type: "leave", period: "full" }],
+    }));
+    expect(row.remark).toBe("ลา 9\n1, 2, 5: ประชุมนอกสถานที่\n13: รถติดมาก");
+  });
+
+  it("should show remarks alone when there are no plan notices", () => {
+    const row = buildMonthlyReportRow(base({
+      attendance: [{ date: dbDate(10, 20), check_in_time: local(20, 9, 0), check_out_time: null, work_type: "office", remark: "ลืมลงเวลาออก" }],
+    }));
+    expect(row.remark).toBe("20: ลืมลงเวลาออก");
+  });
+
+  it("should mark half-day leaves in the remark", () => {
+    const row = buildMonthlyReportRow(base({
+      leaves: [
+        { start_date: dbDate(10, 5), end_date: dbDate(10, 7), total_days: 3 },
+        { start_date: dbDate(10, 12), end_date: dbDate(10, 12), total_days: 0.5 },
+      ],
+      exceptions: [
+        { date: dbDate(10, 9), type: "leave", period: "morning" },
+        { date: dbDate(10, 14), type: "leave", period: "afternoon" },
+        { date: dbDate(10, 6), type: "leave", period: "morning" }, // ซ้ำกับใบลาเต็มวัน ให้นับเต็มวัน
+      ],
+    }));
+    expect(row.remark).toBe("ลา 5–7, 9 (ครึ่งเช้า), 12 (ครึ่งวัน), 14 (ครึ่งบ่าย)");
+  });
+
+  it("should not count late or missing check-out on leave or official-trip days", () => {
+    const row = buildMonthlyReportRow(base({
+      attendance: [
+        // ลาครึ่งบ่ายในแผนงาน: มาตอนเช้าตามเวลา ไม่ได้สแกนออก
+        { date: dbDate(10, 1), check_in_time: local(1, 8, 20), check_out_time: null, work_type: "office" },
+        // ไปราชการครึ่งบ่าย: ไม่ได้สแกนออก
+        { date: dbDate(10, 2), check_in_time: local(2, 8, 20), check_out_time: null, work_type: "office" },
+        // ใบลาครึ่งวันจากระบบลา: มาช่วงบ่าย ไม่ได้สแกนออก
+        { date: dbDate(10, 5), check_in_time: local(5, 12, 55), check_out_time: null, work_type: "office" },
+        // ลงเวลาแบบไปราชการ: สายแต่ไม่นับ
+        { date: dbDate(10, 6), check_in_time: local(6, 10, 0), check_out_time: local(6, 16, 30), work_type: "official_trip" },
+        // วันปกติ: สายและไม่สแกนออกยังนับ
+        { date: dbDate(10, 7), check_in_time: local(7, 9, 0), check_out_time: null, work_type: "office" },
+      ],
+      leaves: [{ start_date: dbDate(10, 5), end_date: dbDate(10, 5), total_days: 0.5 }],
+      exceptions: [
+        { date: dbDate(10, 1), type: "leave", period: "afternoon" },
+        { date: dbDate(10, 2), type: "official_trip", period: "afternoon" },
+      ],
+    }));
+    expect(row.columns.late).toEqual({ days: [7], total: 1 });
+    expect(row.columns.noCheckOut).toEqual({ days: [7], total: 1 });
   });
 
   it("should shift the late threshold for an approved morning exception", () => {

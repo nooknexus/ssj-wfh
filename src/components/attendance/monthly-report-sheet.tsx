@@ -14,7 +14,7 @@ const printWhenFontsReady = async () => {
   window.print();
 };
 
-/** คอลัมน์ตามฟอร์ม: [หัวข้อ, คอลัมน์ข้อมูล] แต่ละคอลัมน์มีช่อง (วันที่) และ รวม (วัน) */
+/** คอลัมน์ตามฟอร์ม: [หัวข้อ, คอลัมน์ข้อมูล] แต่ละหัวข้อมีช่อง วันที่ และ รวม (วัน) */
 const COLUMN_GROUPS: Array<[string, ReportColumn]> = [
   ["ลาพักผ่อน", "vacation"],
   ["ลาป่วย", "sick"],
@@ -22,6 +22,7 @@ const COLUMN_GROUPS: Array<[string, ReportColumn]> = [
   ["ไปราชการ", "officialTrip"],
   ["มาสาย", "late"],
   ["ไม่สแกนเข้า", "noCheckIn"],
+  ["ไม่สแกนออก", "noCheckOut"],
 ];
 
 const formatTotal = (total: number) => (total ? String(total) : "");
@@ -38,9 +39,8 @@ const ReportRow = ({ index, row }: { index: number; row?: Row }) => (
     {COLUMN_GROUPS.map(([, key]) => (
       <ColumnCells key={key} days={row?.columns[key].days} total={row?.columns[key].total} />
     ))}
-    <td className={cell}>{row ? formatDayList(row.noCheckOutDays) : ""}</td>
     <td className={cell} />
-    <td className={`${cell} text-[10px]`}>{row?.remark ?? ""}</td>
+    <td className={`${cell} whitespace-pre-line text-[10px]`}>{row?.remark ?? ""}</td>
   </tr>
 );
 
@@ -57,33 +57,23 @@ const ReportHead = () => (
       <th rowSpan={2} className={`${head} w-8 whitespace-nowrap`}>ลำดับที่</th>
       <th rowSpan={2} className={`${head} min-w-[140px]`}>ชื่อ - นามสกุล</th>
       {COLUMN_GROUPS.map(([label]) => (
-        <SubHead key={label} label={label} />
+        <th key={label} colSpan={2} className={`${head} whitespace-nowrap`}>{label}</th>
       ))}
-      <th className={`${head} min-w-[72px] whitespace-nowrap`}>ไม่สแกนออก</th>
-      <th className={head}>เซ็นชื่อ</th>
+      <th rowSpan={2} className={`${head} min-w-[70px]`}>เซ็นชื่อ<br />รับทราบ</th>
       <th rowSpan={2} className={`${head} min-w-[90px]`}>หมายเหตุ</th>
     </tr>
     <tr>
       {COLUMN_GROUPS.map(([label]) => (
         <SubHeadUnits key={label} />
       ))}
-      <th className={head}>(วันที่)</th>
-      <th className={`${head} min-w-[70px]`}>รับทราบ</th>
     </tr>
   </thead>
 );
 
-const SubHead = ({ label }: { label: string }) => (
-  <>
-    <th className={`${head} min-w-[72px] whitespace-nowrap`}>{label}</th>
-    <th className={`${head} w-9`}>รวม</th>
-  </>
-);
-
 const SubHeadUnits = () => (
   <>
-    <th className={head}>(วันที่)</th>
-    <th className={head}>(วัน)</th>
+    <th className={`${head} min-w-[72px] font-normal`}>วันที่</th>
+    <th className={`${head} w-9 font-normal`}>รวม<br />(วัน)</th>
   </>
 );
 

@@ -38,11 +38,11 @@ export const buildMonthlyAttendanceReport = async (
     }),
     db.attendanceRecord.findMany({
       where: { date: { gte: monthStart, lte: monthEnd }, user: userWhere },
-      select: { user_id: true, date: true, check_in_time: true, check_out_time: true, work_type: true },
+      select: { user_id: true, date: true, check_in_time: true, check_out_time: true, work_type: true, remark: true },
     }),
     db.leaveRequest.findMany({
       where: { step2_status: "approved", start_date: { lte: monthEnd }, end_date: { gte: monthStart }, user: userWhere },
-      select: { user_id: true, start_date: true, end_date: true, total_days: true, leave_type: { select: { name: true } } },
+      select: { user_id: true, start_date: true, end_date: true, total_days: true },
     }),
     db.attendanceException.findMany({
       where: { status: "approved", date: { gte: monthStart, lte: monthEnd }, user: userWhere },
@@ -71,7 +71,7 @@ export const buildMonthlyAttendanceReport = async (
       attendance: attendance.filter((record) => record.user_id === user.id),
       leaves: leaves
         .filter((leave) => leave.user_id === user.id)
-        .map((leave) => ({ ...leave, total_days: Number(leave.total_days), leaveTypeName: leave.leave_type.name })),
+        .map((leave) => ({ ...leave, total_days: Number(leave.total_days) })),
       exceptions: exceptions.filter((exception) => exception.user_id === user.id),
     }),
   }));

@@ -4,9 +4,9 @@
  */
 import { getLateThreshold, mergeApprovedPeriods, type DayPeriod } from "./attendance-exception";
 
-export type ReportColumn = "vacation" | "sick" | "personal" | "officialTrip" | "late" | "noCheckIn";
+export type ReportColumn = "vacation" | "sick" | "personal" | "officialTrip" | "late" | "noCheckIn" | "noCheckOut";
 
-export const REPORT_COLUMNS: ReportColumn[] = ["vacation", "sick", "personal", "officialTrip", "late", "noCheckIn"];
+export const REPORT_COLUMNS: ReportColumn[] = ["vacation", "sick", "personal", "officialTrip", "late", "noCheckIn", "noCheckOut"];
 
 export const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -38,26 +38,19 @@ export const formatDayList = (days: readonly number[]): string => {
   return parts.join(", ");
 };
 
-/** ชื่อประเภทลา → คอลัมน์ในฟอร์ม ลาประเภทอื่น (เช่น ลาคลอด ลาอุปสมบท) นับรวมในช่องลากิจ */
-export const classifyLeaveType = (name: string | null | undefined): "vacation" | "sick" | "personal" => {
-  const text = (name ?? "").replace(/\s+/g, "");
-  if (text.includes("พักผ่อน")) return "vacation";
-  if (text.includes("ป่วย")) return "sick";
-  return "personal";
-};
-
 export type ReportAttendance = {
   date: Date;
   check_in_time: Date | null;
   check_out_time: Date | null;
   work_type: string;
+  /** หมายเหตุที่ผู้ใช้กรอกเองในประวัติการลงเวลา */
+  remark?: string | null;
 };
 
 export type ReportLeave = {
   start_date: Date;
   end_date: Date;
   total_days: number;
-  leaveTypeName: string;
 };
 
 export type ReportException = {
@@ -82,7 +75,6 @@ export type ReportCell = { days: number[]; total: number };
 
 export type MonthlyReportRow = {
   columns: Record<ReportColumn, ReportCell>;
-  noCheckOutDays: number[];
   remark: string;
 };
 
@@ -119,18 +111,65 @@ const leaveDaysInMonth = (leave: ReportLeave, workingDays: Date[]) => {
 
 const exceptionValue = (period: DayPeriod) => (period === "full" ? 1 : 0.5);
 
+const PLAN_LEAVE_PART: Record<DayPeriod, LeavePart> = { full: "full", morning: "ครึ่งเช้า", afternoon: "ครึ่งบ่าย" };
+
+type LeavePart = "full" | "ครึ่งเช้า" | "ครึ่งบ่าย" | "ครึ่งวัน";
+
+/** รวมส่วนของวันลา: เต็มวันชนะทุกแบบ และครึ่งเช้า + ครึ่งบ่ายวันเดียวกันเป็นเต็มวัน */
+const mergeLeavePart = (current: LeavePart | undefined, next: LeavePart): LeavePart => {
+  if (!current || current === next) return next;
+  if (current === "full" || next === "full") return "full";
+  const halves = new Set([current, next]);
+  return halves.has("ครึ่งเช้า") && halves.has("ครึ่งบ่าย") ? "full" : current;
+};
+
+/** วันลาในหมายเหตุ เช่น "5–7, 9 (ครึ่งเช้า), 12 (ครึ่งวัน)" วันเต็มที่ติดกันย่อเป็นช่วง */
+const formatLeaveDays = (parts: Map<number, LeavePart>): string => {
+  const tokens: string[] = [];
+  let run: number[] = [];
+  const flush = () => {
+    if (run.length) tokens.push(formatDayList(run));
+    run = [];
+  };
+  for (const day of [...parts.keys()].sort((a, b) => a - b)) {
+    const part = parts.get(day)!;
+    if (part === "full") {
+      run.push(day);
+      continue;
+    }
+    flush();
+    tokens.push(`${day} (${part})`);
+  }
+  flush();
+  return tokens.join(", ");
+};
+
+/** หมายเหตุของผู้ใช้แบบ "วันที่: ข้อความ" ข้อความเดียวกันหลายวันรวมเป็นบรรทัดเดียว เรียงตามวันแรก */
+const formatUserRemarks = (input: MonthlyReportInput): string[] => {
+  const daysByText = new Map<string, number[]>();
+  for (const record of input.attendance) {
+    const text = record.remark?.trim().replace(/\s+/g, " ");
+    if (!text || !isInMonth(record.date, input.year, input.month)) continue;
+    daysByText.set(text, [...(daysByText.get(text) ?? []), record.date.getDate()]);
+  }
+  return [...daysByText.entries()]
+    .sort(([, a], [, b]) => Math.min(...a) - Math.min(...b))
+    .map(([text, days]) => `${formatDayList(days)}: ${text}`);
+};
+
 export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportRow => {
   const workingDays = workingDaysOfMonth(input);
   const maps = Object.fromEntries(REPORT_COLUMNS.map((column) => [column, new Map<number, number>()])) as Record<ReportColumn, Map<number, number>>;
-  const planLeaveDays: number[] = [];
-  const noCheckOutDays: number[] = [];
-  const covered = new Set<number>();
+  // วันที่ลา (ใบลาจากระบบลาและแจ้งลาในแผนงาน) ช่องลาแต่ละประเภทให้เจ้าหน้าที่เขียนเองหลังพิมพ์
+  const leaveParts = new Map<number, LeavePart>();
+  /** วันที่มีใบลาจากระบบลา: ครึ่งวันไม่รู้ว่าเช้าหรือบ่าย */
+  const sourceLeave = new Map<number, "full" | "half">();
 
   for (const leave of input.leaves) {
-    const column = classifyLeaveType(leave.leaveTypeName);
     for (const { day, value } of leaveDaysInMonth(leave, workingDays)) {
-      covered.add(day);
-      addDays(maps[column], day, value);
+      const half = value < 1;
+      sourceLeave.set(day, sourceLeave.get(day) === "full" || !half ? "full" : "half");
+      leaveParts.set(day, mergeLeavePart(leaveParts.get(day), half ? "ครึ่งวัน" : "full"));
     }
   }
 
@@ -141,7 +180,7 @@ export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportR
     const day = exception.date.getDate();
     exceptionsByDay.set(day, [...(exceptionsByDay.get(day) ?? []), exception]);
     if (exception.type === "official_trip") addDays(maps.officialTrip, day, exceptionValue(exception.period));
-    else planLeaveDays.push(day);
+    else leaveParts.set(day, mergeLeavePart(leaveParts.get(day), PLAN_LEAVE_PART[exception.period]));
   }
 
   const attendanceByDay = new Map(
@@ -152,24 +191,30 @@ export const buildMonthlyReportRow = (input: MonthlyReportInput): MonthlyReportR
     const record = attendanceByDay.get(day);
     const dayExceptions = exceptionsByDay.get(day) ?? [];
     const period = mergeApprovedPeriods(dayExceptions.map((item) => item.period));
+    const leave = sourceLeave.get(day);
     if (record?.check_in_time) {
       if (record.work_type === "official_trip") addDays(maps.officialTrip, day, 1);
-      const threshold = getLateThreshold(date, input.workingTime, input.afternoonStart, period);
-      if (record.work_type !== "onsite" && record.check_in_time > threshold) addDays(maps.late, day, 1);
+      // ใบลาครึ่งวันจากระบบลาไม่รู้ว่าเช้าหรือบ่าย จึงให้ใช้เวลาตัดสายช่วงบ่าย
+      const latePeriod = period ?? (leave === "half" ? "morning" : null);
+      const threshold = getLateThreshold(date, input.workingTime, input.afternoonStart, latePeriod);
+      const exemptFromLate = record.work_type === "onsite" || record.work_type === "official_trip" || period === "full" || leave === "full";
+      if (!exemptFromLate && record.check_in_time > threshold) addDays(maps.late, day, 1);
+      // ลา/ไปราชการครึ่งบ่ายหรือเต็มวัน หรือมีใบลาจากระบบลา ไม่ต้องสแกนออก
+      const exemptFromCheckOut = period === "afternoon" || period === "full" || Boolean(leave);
       const checkedOut = record.check_out_time && record.check_out_time.getTime() !== record.check_in_time.getTime();
-      if (!checkedOut && isBeforeDay(date, input.today)) noCheckOutDays.push(day);
+      if (!checkedOut && !exemptFromCheckOut && isBeforeDay(date, input.today)) addDays(maps.noCheckOut, day, 1);
       continue;
     }
-    if (covered.has(day) || period === "full" || !isBeforeDay(date, input.today)) continue;
-    // ไม่มีการลงเวลา: ถ้าแจ้งครึ่งวันไว้ นับขาดครึ่งวัน
+    if (leave || period === "full" || !isBeforeDay(date, input.today)) continue;
+    // ไม่มีการลงเวลา: ถ้าแจ้งลา/ไปราชการครึ่งวันในแผนงาน นับขาดครึ่งวัน (ใบลาจากระบบลาไม่นับ)
     addDays(maps.noCheckIn, day, period ? 0.5 : 1);
   }
 
-
   return {
     columns: Object.fromEntries(REPORT_COLUMNS.map((column) => [column, toCell(maps[column])])) as Record<ReportColumn, ReportCell>,
-    noCheckOutDays: noCheckOutDays.sort((a, b) => a - b),
-    remark: planLeaveDays.length ? `แจ้งลา(แผนงาน) ${formatDayList(planLeaveDays)}` : "",
+    remark: [leaveParts.size ? `ลา ${formatLeaveDays(leaveParts)}` : "", ...formatUserRemarks(input)]
+      .filter(Boolean)
+      .join("\n"),
   };
 };
 

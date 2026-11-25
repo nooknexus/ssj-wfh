@@ -45,3 +45,9 @@ next-env.d.ts
 
 # python scripts
 *.py
+
+# local claude code config
+/.claude
+
+# user-uploaded files (saved to disk, not tracked)
+/public/uploads
